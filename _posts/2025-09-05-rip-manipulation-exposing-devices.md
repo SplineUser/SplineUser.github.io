@@ -4,31 +4,6 @@ title: "Expanding the Hunting Horizons using RIP Manipulation"
 date: 2025-09-05
 categories: research kernel-exploitation
 ---
-<!-----
-
-You have some errors, warnings, or alerts. If you are using reckless mode, turn it off to see useful information and inline alerts.
-* ERRORs: 0
-* WARNINGs: 0
-* ALERTS: 26
-
-Conversion time: 3.225 seconds.
-
-
-Using this Markdown file:
-
-1. Paste this output into your source file.
-2. See the notes and action items below regarding this conversion run.
-3. Check the rendered output (headings, lists, code blocks, tables) for proper
-   formatting and use a linkchecker before you publish this page.
-
-Conversion notes:
-
-* Docs to Markdown version 1.0β44
-* Fri Sep 05 2025 03:49:44 GMT-0700 (PDT)
-* Source doc: Untitled document
-* This document has images: check for >>>>>  gd2md-html alert:  inline image link in generated source and store images to your server. NOTE: Images in exported zip file from Google Docs may not appear in  the same order as they do in your doc. Please check the images!
-
------>
 
 
 <p style="color: red; font-weight: bold">>>>>>  gd2md-html alert:  ERRORs: 0; WARNINGs: 0; ALERTS: 26.</p>
