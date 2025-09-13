@@ -30,7 +30,6 @@ Recent posts include:
 - **GitHub Pages** – hosting
 - **Markdown + Liquid** – content formatting
 - **Rouge** – syntax highlighting
-- Planned enhancements: theme customization, dark mode, search, tags & categories
 
 ---
 
