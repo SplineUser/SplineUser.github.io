@@ -14,12 +14,16 @@ timezone:
 # jekyll-seo-tag settings › https://github.com/jekyll/jekyll-seo-tag/blob/master/docs/usage.md
 # ↓ --------------------------
 
-title: Chirpy # the main title
+title: Cybersecurity Research Blog
 
-tagline: A text-focused Jekyll theme # it will display as the subtitle
+tagline: Exploring advanced threats, exploitation, and defense strategies
 
-description: >- # used by seo meta and the atom feed
-  A minimal, responsive and feature-rich Jekyll theme for technical writing.
+description: >-
+  A technical blog focused on cybersecurity research — covering APT simulation,
+  malware evasion, LPE, kernel exploitation, and vulnerability discovery.
+  Written for researchers, practitioners, and security enthusiasts who want
+  deep, hands-on insights into both offensive and defensive security.
+
 
 # Fill in the protocol & hostname for your site.
 # E.g. 'https://username.github.io', note that it does not end with a '/'.
