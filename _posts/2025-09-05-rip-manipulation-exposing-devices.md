@@ -53,8 +53,8 @@ Here is a clearer representation:
 
 - **0.115%** of the devices had unique devices for testing
 
-<img src="{{'./assets/images/rip-manipulation/media/image25.png' | relative_url}}"
-style="width:5.21875in;height:0.91667in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image25.png' | relative_url }}"
+style="width:5.21875in;height:0.91667in" alt="image25" />
 
 **Problem:** We clearly see the incredibly low yield of drivers that
 actually end up exposing their devices. To increase our yield rate, we
@@ -97,32 +97,32 @@ works to begin with.
 The first attempt:** So the first attempt is supposed to be simple, we
 found the function in Ghidra that has IoCreateDevice in it.
 
-<img src="/assets/images/rip-manipulation/media/image4.png"
-style="width:5.54167in;height:0.5in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image4.png' | relative_url }}"
+style="width:5.54167in;height:0.5in" alt="image4" />
 
 We then looked at the offset inside of Ghidra:
 
-<img src="/assets/images/rip-manipulation/media/image15.png"
-style="width:3.34375in;height:0.46875in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image15.png' | relative_url }}"
+style="width:3.34375in;height:0.46875in" alt="image15" />
 
 We found the real offset by using the RVA - VA to get 0x3395b. To get
 the base address of the driver, we utilized the lmDvm command to get the
 information for our driver.
 
-<img src="./assets/images/rip-manipulation/media/image19.png"
-style="width:6.38542in;height:1.54167in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image19.png' | relative_url }}"
+style="width:6.38542in;height:1.54167in" alt="image19" />
 
 We confirmed if this was the right address by using the follow command
 and comparing the result with the Ghidra output:
 
-<img src="./assets/images/rip-manipulation/media/image1.png"
-style="width:6.5in;height:0.52778in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image1.png' | relative_url }}"
+style="width:6.5in;height:0.52778in" alt="image1" />
 
 They matched. So we set the RIP to
 “<span class="mark">fffff802\`54e1395b” so it would call the function.
 We used the following command for that:  
-</span><img src="./assets/images/rip-manipulation/media/image18.png"
-style="width:6.5in;height:0.95833in" /><span class="mark">  
+</span><img src="{{ '/assets/images/rip-manipulation/media/image18.png' | relative_url }}"
+style="width:6.5in;height:0.95833in" alt="image18" /><span class="mark">  
   
 As you can see, this approach crashed our VM \[Fatal System Error:
 0x000000d1</span>
@@ -142,15 +142,15 @@ not.
   
 We see the following function and where exactly the API call is present
 at:  
-</span><img src="./assets/images/rip-manipulation/media/image23.png"
-style="width:6.5in;height:3.51389in" /><span class="mark">  
+</span><img src="{{ '/assets/images/rip-manipulation/media/image23.png' | relative_url }}"
+style="width:6.5in;height:3.51389in" alt="image23" /><span class="mark">  
   
 From Ghidra, we also discover the offset to be: 0x36a2eh. Lets set a
 breakpoint there and restart the driver:  
 </span>
 
-<img src="./assets/images/rip-manipulation/media/image2.png"
-style="width:6.5in;height:1.61111in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image2.png' | relative_url }}"
+style="width:6.5in;height:1.61111in" alt="image2" />
 
 <span class="mark">We see that the function is never called to begin
 with. Let's analyze the why:</span>
@@ -159,33 +159,33 @@ with. Let's analyze the why:</span>
 We see the following function that are called in a step routine for
 IRP_DISPATCH_TABLE:</span>
 
-<img src="./assets/images/rip-manipulation/media/image14.png"
-style="width:5.65625in;height:4.30208in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image14.png' | relative_url }}"
+style="width:5.65625in;height:4.30208in" alt="image14" />
 
 <span class="mark">Now we should confirm what param_1 + 0x30 actually
 points to, from WinDBG we find the following at the breakpoint:</span>
 
-<img src="./assets/images/rip-manipulation/media/image3.png"
-style="width:6.5in;height:1.83333in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image3.png' | relative_url }}"
+style="width:6.5in;height:1.83333in" alt="image3" />
 
 <span class="mark">R12 holds the param_1 value, lets dump the registers
 to see what param_1 actually is:</span>
 
-<img src="./assets/images/rip-manipulation/media/image22.png"
-style="width:2.14583in;height:0.60417in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image22.png' | relative_url }}"
+style="width:2.14583in;height:0.60417in" alt="image22" />
 
 <span class="mark">Let's look at the address and its offset by
 30:</span>
 
-<img src="./assets/images/rip-manipulation/media/image16.png"
-style="width:5.51042in;height:1.97917in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image16.png' | relative_url }}"
+style="width:5.51042in;height:1.97917in" alt="image16" />
 
 <span class="mark">This does not particularly look like a dispatch
 table. Also we know “ffff8c87\`e756f950” will be stored inside RAX and
 its +8 offset would be stored:</span>
 
-<img src="./assets/images/rip-manipulation/media/image9.png"
-style="width:5.69792in;height:0.46875in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image9.png' | relative_url }}"
+style="width:5.69792in;height:0.46875in" alt="image9" />
 
 <span class="mark">From the assembly code, we can see that the code
 simply stores the pointer of the Function “IRP_CreateDevice” into
@@ -197,14 +197,14 @@ to use the CreateFileW API call to make this driver expose the device.
 The only problem is that we do not know what the device name is. Lets
 use static analysis in Ghidra to possibly find it hardcoded.</span>
 
-<img src="./assets/images/rip-manipulation/media/image20.png"
-style="width:5.84375in;height:1.58333in" /><span class="mark">  
+<img src="{{ '/assets/images/rip-manipulation/media/image20.png' | relative_url }}"
+style="width:5.84375in;height:1.58333in" alt="image20" /><span class="mark">  
   
 Here we see references to “DosDevices” and “DosDevices\\HCD”,
 Interestingly enough, we see certain references to similar strings
 inside of WinObj:  
-</span><img src="./assets/images/rip-manipulation/media/image6.png"
-style="width:6.5in;height:0.59722in" />
+</span><img src="{{ '/assets/images/rip-manipulation/media/image6.png' | relative_url }}"
+style="width:6.5in;height:0.59722in" alt="image6" />
 
 <span class="mark">However these are not the devices created by the
 driver, more importantly, we see the mention of the string “RENESAS”
@@ -217,28 +217,28 @@ Let’s attempt to force the creation of the device using the CreateFileW
 API.</span>
 
 <span class="mark">Before:  
-</span><img src="./assets/images/rip-manipulation/media/image12.png"
-style="width:1.85417in;height:0.27083in" /><span class="mark">  
+</span><img src="{{ '/assets/images/rip-manipulation/media/image12.png' | relative_url }}"
+style="width:1.85417in;height:0.27083in" alt="image12-before" /><span class="mark">  
 After:</span>
 
-<img src="./assets/images/rip-manipulation/media/image12.png"
-style="width:1.85417in;height:0.27083in" /><span class="mark">  
+<img src="{{ '/assets/images/rip-manipulation/media/image12.png' | relative_url }}"
+style="width:1.85417in;height:0.27083in" alt="image12-after" /><span class="mark">  
   
 Not a success. Let's analyze why this might be the case, from the code
 section, we can see there is a conditional if statement that if
 satisfied will trigger the section where the IRP_CreateDevice function
 lives:  
-</span><img src="./assets/images/rip-manipulation/media/image24.png"
-style="width:5.14583in;height:0.40625in" /><span class="mark">  
+</span><img src="{{ '/assets/images/rip-manipulation/media/image24.png' | relative_url }}"
+style="width:5.14583in;height:0.40625in" alt="image24" /><span class="mark">  
 From the looks of it, it seems to be looking for a magic value inside of
 param_3. It wants param three to start with the following: “0x94 0x03
 0x00”. Lets see what param_3 actually even is</span>
 
-<img src="./assets/images/rip-manipulation/media/image7.png"
-style="width:6.40625in;height:0.23958in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image7.png' | relative_url }}"
+style="width:6.40625in;height:0.23958in" alt="image7" />
 
-<img src="./assets/images/rip-manipulation/media/image5.png"
-style="width:2.14583in;height:0.95833in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image5.png' | relative_url }}"
+style="width:2.14583in;height:0.95833in" alt="image5" />
 
 <span class="mark">We can see that param_3 is locally initialized and is
 not under the control of the user. We also see that local_b8 has its
@@ -254,18 +254,17 @@ let's see what's going on now.</span>
 
 <span class="mark">From here we see that inside WinDBG, we successfully
 hit:  
-</span><img src="./assets/images/rip-manipulation/media/image17.png"
-style="width:6.5in;height:0.375in" />
+</span><img src="{{ '/assets/images/rip-manipulation/media/image17.png' | relative_url }}"
+style="width:6.5in;height:0.375in" alt="image17" />
 
 <span class="mark">Which corresponds to</span>
 
-<img src="./assets/images/rip-manipulation/media/image11.png"
-style="width:5.38542in;height:0.625in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image11.png' | relative_url }}"
+style="width:5.38542in;height:0.625in" alt="image11" />
 
 <span class="mark">Therefore we can be certain that our param_3 aka the
 local_b8 does pass this test. In fact after setting a breakpoint at the
-exact line where IRP_CreateDevice is being initialized aka “\*(code
-\*\*)(\*(longlong \*)(param_1 + 0x30) + 8) = IRP_CreateDevice;”, we
+exact line where IRP_CreateDevice is being initialized aka “*(code **)(*(longlong *)(param_1 + 0x30) + 8) = IRP_CreateDevice;”, we
 still see the breakpoint being hit. Therefore we can confirm that the
 magic values are not the issues but instead it might be our approach to
 having the driver expose the devices. From the code we know that the
@@ -275,28 +274,28 @@ triggered by windows if we pass on a correct request with CreateFileW.
 We can see if we can trigger the function by setting a breakpoint at
 that offset.</span>
 
-<img src="./assets/images/rip-manipulation/media/image21.png"
-style="width:4.79167in;height:2.64583in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image21.png' | relative_url }}"
+style="width:4.79167in;height:2.64583in" alt="image21" />
 
 <span class="mark">We know the actual offset = RVA - VA → 0x32c50</span>
 
 <span class="mark">Therefore, let’s setup a breakpoint at:</span>
 
-<img src="./assets/images/rip-manipulation/media/image8.png"
-style="width:3.10417in;height:0.58333in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image8.png' | relative_url }}"
+style="width:3.10417in;height:0.58333in" alt="image8" />
 
 <span class="mark">and run our python script using CreateFileW to
 possibly call IRP_MJ_CREATE:</span>
 
-<img src="./assets/images/rip-manipulation/media/image10.png"
-style="width:6.11458in;height:1.57292in" />
+<img src="{{ '/assets/images/rip-manipulation/media/image10.png' | relative_url }}"
+style="width:6.11458in;height:1.57292in" alt="image10" />
 
 <span class="mark">However we see no breakpoint being hit. Therefore we
 can assume this function is not getting called through this approach.  
   
 Lets see why that is:  
-</span><img src="./assets/images/rip-manipulation/media/image25.png"
-style="width:4.125in;height:1.51042in" /><span class="mark">  
+</span><img src="{{ '/assets/images/rip-manipulation/media/image25.png' | relative_url }}"
+style="width:4.125in;height:1.51042in" alt="image25-2" /><span class="mark">  
 We see there are only two instances of IoCreateSymbolicLink being
 present, one of them being inside of the IRP_DeviceCreate Function,
 therefore it does not expose the devices to user-mode. It's like a
