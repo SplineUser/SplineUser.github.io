@@ -53,8 +53,8 @@ Here is a clearer representation:
 
 - **0.115%** of the devices had unique devices for testing
 
-<img src="{{ '/assets/images/rip-manipulation/media/image25.png' | relative_url }}"
-style="width:5.21875in;height:0.91667in" alt="image25" />
+<img src="{{ '/assets/images/rip-manipulation/media/image26.png' | relative_url }}"
+style="width:5.21875in;height:0.91667in" alt="image26" />
 
 **Problem:** We clearly see the incredibly low yield of drivers that
 actually end up exposing their devices. To increase our yield rate, we
