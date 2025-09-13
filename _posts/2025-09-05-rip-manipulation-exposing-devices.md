@@ -53,7 +53,7 @@ Here is a clearer representation:
 
 - **0.115%** of the devices had unique devices for testing
 
-<img src="./assets/images/rip-manipulation/media/image25.png"
+<img src="/assets/images/rip-manipulation/media/image25.png"
 style="width:5.21875in;height:0.91667in" />
 
 **Problem:** We clearly see the incredibly low yield of drivers that
@@ -97,12 +97,12 @@ works to begin with.
 The first attempt:** So the first attempt is supposed to be simple, we
 found the function in Ghidra that has IoCreateDevice in it.
 
-<img src="./assets/images/rip-manipulation/media/image4.png"
+<img src="/assets/images/rip-manipulation/media/image4.png"
 style="width:5.54167in;height:0.5in" />
 
 We then looked at the offset inside of Ghidra:
 
-<img src="./assets/images/rip-manipulation/media/image15.png"
+<img src="/assets/images/rip-manipulation/media/image15.png"
 style="width:3.34375in;height:0.46875in" />
 
 We found the real offset by using the RVA - VA to get 0x3395b. To get
