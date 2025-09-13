@@ -6,7 +6,7 @@ order: 4
 
 # About — Priyan
 
-Hi — I’m **Priyan**, a cybersecurity researcher focused on low-level offensive techniques and the defensive lessons that follow from them. I publish hands-on writeups, PoCs, and methodical research that explore how modern systems can be manipulated — and how defenders can use that knowledge to build stronger protections.
+Hi, I’m **Priyan**, a cybersecurity researcher focused on low-level offensive techniques and the defensive lessons that follow from them. I publish hands-on writeups, PoCs, and methodical research that explore how modern systems can be manipulated and how defenders can use that knowledge to build stronger protections.
 
 ---
 
@@ -20,7 +20,7 @@ My work targets the intersection of exploitation craftsmanship and evasive engin
 - **BYOVD & covert channels** — exploring benign-appearing vessels and non-standard carriers for payload transport.  
 - **API-hashing / stealth loading** — techniques for reducing forensic artifacts in PoC scenarios.
 
-> Note: My emphasis is hands-on, low-level research — I prefer small, reproducible experiments that illuminate why a technique works and what mitigations are effective.
+> Note: My emphasis is hands-on, low-level research and I prefer small, reproducible experiments that illuminate why a technique works and what mitigations are effective.
 
 ---
 
@@ -43,7 +43,7 @@ My work targets the intersection of exploitation craftsmanship and evasive engin
 ## Want to collaborate?
 I’m open to:
 - technical reviews,
-- co-authoring defensive research,
+- co-authoring research,
 - or discussing how offensive techniques reveal practical mitigations.
 
 Email (preferred) or open an issue on GitHub if you have a responsible collaboration proposal.
@@ -62,7 +62,7 @@ Example citation:
 ---
 
 ## Ethics & disclaimer
-All content on this site is published for **educational and research purposes only**. Techniques described are powerful and can be misused — please do **not** apply them against systems you do not own or have explicit permission to test. I do not endorse unlawful or malicious activity. If you discover a vulnerability in third-party software, please follow responsible disclosure procedures.
+All content on this site is published for **educational and research purposes only**. Techniques described are powerful and can be misused, please do **not** apply them against systems you do not own or have explicit permission to test. I do not endorse unlawful or malicious activity. If you discover a vulnerability in third-party software, please follow responsible disclosure procedures.
 
 ---
 
@@ -72,5 +72,5 @@ All content on this site is published for **educational and research purposes on
 
 ---
 
-Thanks for stopping by — browse the research posts, open an issue to discuss, or drop me an email if you’d like to collaborate.
+Thanks for stopping by and feel free to browse the research posts, open an issue to discuss, or drop me an email if you’d like to collaborate.
 
