@@ -96,7 +96,7 @@ which might be interesting however we didn't find anything in
 there</span>
 
 <img src="/assets/images/iommu-bypass/image3.png"
-style="width:6.5in;height:1.11111in" />
+style="width:6.5in;height:1.11111in" alt="psss"/>
 
 <span class="mark">This output does make sense as these memory regions
 have been reserved for the peripheral devices and it would be weird for
@@ -121,6 +121,7 @@ ensure that you follow proper security etiquette whilst performing such
 research.</span>
 
 <span class="mark">Thank you for reading :D :D :D :D :D :D :D :D</span>
+
 
 
 
