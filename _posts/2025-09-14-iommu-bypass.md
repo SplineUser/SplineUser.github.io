@@ -32,7 +32,7 @@ incredibly common, we will have to look for misconfiguration in these
 devices so that this could potentially be exploited.</span>
 
 <img src="/assets/images/iommu-bypass/image2.png"
-style="width:3.64583in;height:0.28125in" />
+style="width:3.64583in;height:0.28125in" alt="Kernel_DMA_ON" />
 
 <span class="mark">**Problem:** Having a strong kernel-level primitive
 like PCI Config space R/W for peripherals are heavily constrained due
@@ -53,13 +53,13 @@ table. Fortunately, we have an extremely useful tool called ACPIDMUP.EXE
 which we will utilize for dumping every ACPI Table.</span>
 
 <img src="/assets/images/iommu-bypass/image4.png"
-style="width:5.03125in;height:6.71875in" />
+style="width:5.03125in;height:6.71875in" alt="ACPIProperty" />
 
 <span class="mark">Through this, we were able to get the dmar.dat file
 which we converted into the .dsl extension for reading.</span>
 
 <img src="/assets/images/iommu-bypass/image5.png"
-style="width:6.5in;height:0.75in" />
+style="width:6.5in;height:0.75in" alt="extention_change"/>
 
 <span class="mark">The DMAR table consists of two types, The RMRR and
 the DRHD. The RMRR is the Reserved Memory Region Reporting which tells
@@ -67,10 +67,10 @@ us what section of the memory has been reserved for certain devices.
 From our dump, we can clearly see this:</span>
 
 <img src="/assets/images/iommu-bypass/image7.png"
-style="width:6.5in;height:1.34722in" />
+style="width:6.5in;height:1.34722in" alt="RMRR Address Range"/>
 
 <img src="/assets/images/iommu-bypass/image1.png"
-style="width:6.5in;height:1.38889in" />
+style="width:6.5in;height:1.38889in" alt= "WinPMem run"/>
 
 <span class="mark">These sections are interesting because they are
 reserved by the firmware for these two devices so that they can DMA into
@@ -88,7 +88,7 @@ disk file for anything interesting inside those memory sections we
 see.</span>
 
 <img src="/assets/images/iommu-bypass/image6.png"
-style="width:6.5in;height:0.97222in" />
+style="width:6.5in;height:0.97222in" alt="Disk_File Scan"/>
 
 <span class="mark">After we got the .raw disk file. We used a python
 script to check for any interesting memory sections containing anything
@@ -121,5 +121,6 @@ ensure that you follow proper security etiquette whilst performing such
 research.</span>
 
 <span class="mark">Thank you for reading :D :D :D :D :D :D :D :D</span>
+
 
 
