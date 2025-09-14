@@ -2,7 +2,7 @@
 layout: post
 title: "Making THE Malware: FeebleDream development"
 date: 2025-09-14
-categories: Malware development
+categories: MalwareDevelopment FeebleDream
 ---
 
 **<span class="mark">Making THE Malware:Working on the Feeble Dream Update (v3.0)</span>**
@@ -123,5 +123,6 @@ IRP buffer.</span>
 inside an isolated lab environment and on systems we control. Please
 ensure that you follow proper security etiquette whilst performing such
 research.</span>
+
 
 
