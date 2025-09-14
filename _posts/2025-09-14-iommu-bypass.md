@@ -31,7 +31,7 @@ devices to be true by default, a rate of **100%**. Since IOMMU is
 incredibly common, we will have to look for misconfiguration in these
 devices so that this could potentially be exploited.</span>
 
-<img src="./assets/images/iommu-bypass/media/image2.png"
+<img src="/assets/images/iommu-bypass/image2.png"
 style="width:3.64583in;height:0.28125in" />
 
 <span class="mark">**Problem:** Having a strong kernel-level primitive
@@ -52,13 +52,13 @@ to access via DMA. Therefore, we should first try to read the DMAR
 table. Fortunately, we have an extremely useful tool called ACPIDMUP.EXE
 which we will utilize for dumping every ACPI Table.</span>
 
-<img src="./assets/images/iommu-bypass/media/image4.png"
+<img src="/assets/images/iommu-bypass/image4.png"
 style="width:5.03125in;height:6.71875in" />
 
 <span class="mark">Through this, we were able to get the dmar.dat file
 which we converted into the .dsl extension for reading.</span>
 
-<img src="./assets/images/iommu-bypass/media/image5.png"
+<img src="/assets/images/iommu-bypass/image5.png"
 style="width:6.5in;height:0.75in" />
 
 <span class="mark">The DMAR table consists of two types, The RMRR and
@@ -66,10 +66,10 @@ the DRHD. The RMRR is the Reserved Memory Region Reporting which tells
 us what section of the memory has been reserved for certain devices.
 From our dump, we can clearly see this:</span>
 
-<img src="./assets/images/iommu-bypass/media/image7.png"
+<img src="/assets/images/iommu-bypass/image7.png"
 style="width:6.5in;height:1.34722in" />
 
-<img src="./assets/images/iommu-bypass/media/image1.png"
+<img src="/assets/images/iommu-bypass/image1.png"
 style="width:6.5in;height:1.38889in" />
 
 <span class="mark">These sections are interesting because they are
@@ -87,7 +87,7 @@ write the current memory into disk, we could then look through the raw
 disk file for anything interesting inside those memory sections we
 see.</span>
 
-<img src="./assets/images/iommu-bypass/media/image6.png"
+<img src="/assets/images/iommu-bypass/image6.png"
 style="width:6.5in;height:0.97222in" />
 
 <span class="mark">After we got the .raw disk file. We used a python
@@ -95,7 +95,7 @@ script to check for any interesting memory sections containing anything
 which might be interesting however we didn't find anything in
 there</span>
 
-<img src="./assets/images/iommu-bypass/media/image3.png"
+<img src="/assets/images/iommu-bypass/image3.png"
 style="width:6.5in;height:1.11111in" />
 
 <span class="mark">This output does make sense as these memory regions
@@ -121,4 +121,5 @@ ensure that you follow proper security etiquette whilst performing such
 research.</span>
 
 <span class="mark">Thank you for reading :D :D :D :D :D :D :D :D</span>
+
 
