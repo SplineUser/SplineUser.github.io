@@ -1,4 +1,11 @@
-**<span class="mark">Working on the Feeble Dream Update (v3.0)</span>**
+---
+layout: post
+title: "Making THE Malware: FeebleDream development"
+date: 2025-09-05
+categories: Malware development
+---
+
+**<span class="mark">Making THE Malware:Working on the Feeble Dream Update (v3.0)</span>**
 
 **<span class="mark">A. Logging System</span>**
 
@@ -17,14 +24,14 @@ shall introduce a much better system for logging.</span>
 **<span class="mark">Engineering:</span>** We will use modulization and
 create LogStrategy.cpp and LogStrategy.h
 
-<img src="./assets/images/FeebleDreamUpdateWork/media/image6.png"
+<img src="/assets/images/FeebleDreamUpdateWork/image6.png" alt="MSVisualStudio dev code"
 style="width:2.17708in;height:0.75in" />
 
 Next, we will define the variables and functions inside the
 LogStrategy.h file, we will use OOP encapsulation for public/private
 methods.
 
-<img src="./assets/images/FeebleDreamUpdateWork/media/image2.png"
+<img src="/assets/images/FeebleDreamUpdateWork/image2.png" alt="MSVisualStudio dev code"
 style="width:6.5in;height:1.33333in" />
 
 From here, we will create the logic of these functions inside of the
@@ -33,7 +40,7 @@ LogStrategy.CPP. Let's go through all these functions, one by one.
 True, it will take in an input and set that as the value of
 IsLogEnabled.
 
-<img src="./assets/images/FeebleDreamUpdateWork/media/image3.png"
+<img src="/assets/images/FeebleDreamUpdateWork/image3.png" alt="MSVisualStudio dev code"
 style="width:2.95833in;height:0.86458in" />
 
 Next up will be the CreateLogFile Function, which simply will create the
@@ -41,7 +48,7 @@ log file for us to write in. Well, at least right now, perhaps later on,
 we will change this to send the log to the attacker without writing
 anything to the disk.
 
-<img src="./assets/images/FeebleDreamUpdateWork/media/image9.png"
+<img src="/assets/images/FeebleDreamUpdateWork/image9.png" alt="MSVisualStudio dev code"
 style="width:6.5in;height:1.61111in" />
 
 It has the optional name value for the log file name. The default would
@@ -50,7 +57,7 @@ be DFT.log (DFT → Default)
 And at last, we have the Log Function that will actually append the the
 log values into the log file we created:
 
-<img src="./assets/images/FeebleDreamUpdateWork/media/image5.png"
+<img src="/assets/images/FeebleDreamUpdateWork/image5.png" alt="MSVisualStudio dev code"
 style="width:6.5in;height:2.47222in" />
 
 **Note:** Forgot to add the Logger::FunctionName in the screenshots.
@@ -84,7 +91,7 @@ otherwise, it will check for the equivalent service, if it exists then
 it will simply use that service, if it doesn't exist then it will make
 one and run the driver.“</span>
 
-<img src="./assets/images/FeebleDreamUpdateWork/media/image4.png"
+<img src="/assets/images/FeebleDreamUpdateWork/image4.png" alt="MSVisualStudio dev code"
 style="width:5.61458in;height:1.66667in" /><span class="mark">  
   
 Fortunately I had some previous code with me for loading the MSR R/W
@@ -93,17 +100,17 @@ issues.</span>
 
 <span class="mark">CreateDriverService:</span>
 
-<img src="./assets/images/FeebleDreamUpdateWork/media/image1.png"
+<img src="/assets/images/FeebleDreamUpdateWork/image1.png" alt="MSVisualStudio dev code"
 style="width:3.72917in;height:5.5in" />
 
 <span class="mark">DriverLoad:</span>
 
-<img src="./assets/images/FeebleDreamUpdateWork/media/image8.png"
+<img src="/assets/images/FeebleDreamUpdateWork/image8.png" alt="MSVisualStudio dev code"
 style="width:4.30208in;height:5.52083in" />
 
 <span class="mark">CheckDriverLoaded:</span>
 
-<img src="./assets/images/FeebleDreamUpdateWork/media/image7.png"
+<img src="/assets/images/FeebleDreamUpdateWork/image7.png" alt="MSVisualStudio dev code"
 style="width:6.5in;height:2.56944in" />
 
 <span class="mark">**Future work:** Now that we have introduced a new
@@ -116,3 +123,4 @@ IRP buffer.</span>
 inside an isolated lab environment and on systems we control. Please
 ensure that you follow proper security etiquette whilst performing such
 research.</span>
+
