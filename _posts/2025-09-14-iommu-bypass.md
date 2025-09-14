@@ -1,4 +1,11 @@
-**<span class="mark">IOMMU Bypass: Finding potentiation
+---
+layout: post
+title: "IOMMU Bypass: Finding Potential Misconfiguration"
+date: 2025-09-14
+categories: research kernel-exploitation
+---
+
+**<span class="mark">IOMMU Bypass: Finding potential
 misconfigurations</span>**
 
 <span class="mark">**Introduction:** IOMMU abbreviation for Input Output
@@ -114,3 +121,4 @@ ensure that you follow proper security etiquette whilst performing such
 research.</span>
 
 <span class="mark">Thank you for reading :D :D :D :D :D :D :D :D</span>
+
