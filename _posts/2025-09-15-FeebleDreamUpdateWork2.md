@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Adding Kernel Primitves and Information Gathering: FeebleDream development PT-2"
+title: "Adding Kernel Primitives and Information Gathering: FeebleDream development PT-2"
 date: 2025-09-15
 categories: MalwareDevelopment FeebleDream
 ---
