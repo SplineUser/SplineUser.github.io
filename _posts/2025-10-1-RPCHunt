@@ -1,0 +1,296 @@
+**<span class="mark">Playing with RPCs to eventually exploit it</span>**
+
+<span class="mark">**Introduction:** Remote Procedure Calls (RPCs) are
+protocols that allow applications to call functions of different
+processes remotely in the same network. The client calls a local
+procedure with parameters, the data gets packaged into marshals. The
+marshals are sent to the server where the server stub decodes the
+marshal and executes it. The server makes its own response marshal and
+sends it back to the client. The windows OS exposes some RPCs by default
+which could be used for having other applications do the work for us,
+RPCs even work locally, this can be used for avoiding API calls and
+instead outsourcing our work to them or could allow for some other
+vulnerability as this seems similar to how IOCTLs worked when we did our
+driver vulnerability hunting. What's even better is that a lot of RPCs
+are undocumented unlike API calls which adds to the obscurity of this
+method.  
+  
+**Setting up the environment:** We will move towards the canary build
+for Windows 10 now for all our testing to ensure our work will work on
+the latest version and not version dependent. Turns out, the canary
+build upgraded my VM into windows 11, oh well, windows 11 it is then.
+Also the whole setup took 8 hours to complete, which is insane, my PC is
+showing its age now.</span>
+
+<span class="mark">**Research:** We will first require a way to find all
+RPC Interfaces availables, let's use RPCView.exe to take a look at the
+RPCs available. Since we are just starting, let's just select a random
+RPC Interface to look at. The following is WinLogon.exe which is
+exposing an RPC locally. This choice was solely made because
+WinLogon.exe is running at SYSTEM Integrity. The aim of this
+*particular* research is about getting used to RPC and improving how the
+hunt for RPC vulnerabilities could look like, getting a vulnerability on
+the first try is unlikely but just like the vulnerable driver hunting,
+the hunting strategy improves over time.</span>
+
+<img src="/assets/images/RPCHunt/media/image6.png" alt="ScreenshotImg" 
+style="width:2.69713in;height:4.70313in" />
+
+<span class="mark">Operating with a mindset of driver hunting, I want to
+look at the function inside of Ghidra. Fortunately, we do see a UUID for
+the procedure interface inside of RPCView:</span>
+
+<img src="/assets/images/RPCHunt/media/image24.png" alt="ScreenshotImg" 
+style="width:1.91274in;height:2.83854in" /><span class="mark">  
+Therefore, let's try and open winlogon.exe and check if we can search
+for this UUID in it. Before that, lets get the PDB File as that is a
+privilege we get to have for testing windows applications that we didn't
+for the drivers. Using WinDBG and attaching to that process, I was able
+to get the PDB File installed.</span>
+
+<img src="/assets/images/RPCHunt/media/image8.png" alt="ScreenshotImg" 
+style="width:6.5in;height:4.83333in" />
+
+<span class="mark">We were not able to find the exact binary order
+through decompiled text however we were able to find this
+RpcServerRegisterIfEx flag and this is the one we saw in
+RPCView.exe</span>
+
+<img src="/assets/images/RPCHunt/media/image18.png" alt="ScreenshotImg" 
+style="width:4.94792in;height:3.08333in" />
+
+<span class="mark">76F226C3 is what we saw inside of RPCView.exe, It's
+not the exact match but it is close, We also see the fourth argument
+which corresponds to the security callback function. Its purpose is to
+check whether the RPC request meets the right condition in terms of
+privilege. Lets take a look at it:</span>
+
+<img src="/assets/images/RPCHunt/media/image3.png" alt="ScreenshotImg" 
+style="width:6.45833in;height:0.86458in" />
+
+<span class="mark">The security token is compared with this structure
+which is the SID struct.</span>
+
+<img src="/assets/images/RPCHunt/media/image12.png" alt="ScreenshotImg" 
+style="width:6.5in;height:2.13889in" />
+
+<span class="mark">Therefore this can be written as S-1-5-18. According
+to Microsoft Security Identifier page:</span>
+
+<img src="/assets/images/RPCHunt/media/image26.png" alt="ScreenshotImg" 
+style="width:6.5in;height:1.79167in" />
+
+<span class="mark">When X = 5, it means System-Integrity therefore, we
+can conclude that this particular RPC call for this UUID would require
+the process to be local and require SYSTEM Integrity. While this can
+still be useful based on the functionality of the RPC Call. We will take
+a look at a different RPC Interface</span>
+
+<span class="mark">Lets select this one –</span>
+<img src="/assets/images/RPCHunt/media/image7.png" alt="ScreenshotImg" 
+style="width:6.5in;height:0.27778in" />
+
+<span class="mark">The first argument is a structure that contains the
+UUID for the RPC Interface (as seen in RPCView)</span>
+
+<img src="/assets/images/RPCHunt/media/image1.png" alt="ScreenshotImg" 
+style="width:5.13021in;height:3.36259in" />
+
+<span class="mark">Nope, this is also not very interesting, this
+function verifies whether the client thread ID matches with itself i.e.
+only for intra-process communication. It is internal and cannot be
+accessed via an external program unless we can somehow cause token
+impersonation. Let's take a look at the next one:</span>
+
+<img src="/assets/images/RPCHunt/media/image5.png" alt="ScreenshotImg" 
+style="width:6.5in;height:0.52778in" />
+
+<img src="/assets/images/RPCHunt/media/image13.png" alt="ScreenshotImg" 
+style="width:6.5in;height:2.22222in" />
+
+<span class="mark">The security callback seems to be doing nothing about
+security. Which means that any process of any integrity can communicate
+with this RPC. Therefore, we can continue onwards to check what the RPC
+function would actually do in case of an RPC Request. We looked at the
+structures, converted them into QWORDS, hopped around address to address
+until we found this:</span>
+
+<img src="/assets/images/RPCHunt/media/image22.png" alt="ScreenshotImg" 
+style="width:3.55729in;height:3.03282in" />
+
+<span class="mark">We see these functions that look like the actual RPC
+Handlers i.e. the functions called when the RPC Request is sent. It
+seems like the unmarshalling is done through the NdrAsyncServerCall API
+and it returns back to these Functions we see here. After going into the
+function, we can confirm that the RPC Request is sent to another global
+structure indirectly. Instead of directly calling the function or even
+taking actions. It's instead called through this structure.</span>
+
+<img src="/assets/images/RPCHunt/media/image9.png" alt="ScreenshotImg" 
+style="width:6.5in;height:3.73611in" />
+
+<span class="mark">Let's take a look at this structure:</span>
+
+<img src="/assets/images/RPCHunt/media/image4.png" alt="ScreenshotImg" 
+style="width:6.5in;height:1.22222in" />
+
+<span class="mark">This seems to be pointing to nowhere, i.e. this is
+probably dynamically allocated. This can be checked using WinDBG, we
+first used psexec to get a SYSTEM integrity CMD where we then used
+psdump to get the dump based on the PID provided by RPCView. The .dmp
+file was then opened through winDBG for analysis.</span>
+
+<img src="/assets/images/RPCHunt/media/image23.png" alt="ScreenshotImg" 
+style="width:4.61458in;height:1.54167in" />
+
+<span class="mark">The offset ends up being: “9DE00” which means it is
+14009DE00 in Ghidra. It does end up being a function:</span>
+
+<img src="/assets/images/RPCHunt/media/image16.png" alt="ScreenshotImg" 
+style="width:2.82292in;height:1.80208in" />
+
+<span class="mark">By searching the references to the function we just
+found, we were able to discover what's actually happening. Where all of
+the functions are being defined:  
+</span><img src="/assets/images/RPCHunt/media/image19.png" alt="ScreenshotImg" 
+style="width:1.94956in;height:3.2574in" />
+
+<span class="mark">All these functions are just error_code functions
+that do not result in anything useful, therefore exploitations in these
+are not possible. However, we still haven't looked at the other
+pointers, those might have been dynamically changed</span>
+
+<img src="/assets/images/RPCHunt/media/image17.png" alt="ScreenshotImg" 
+style="width:4.61458in;height:0.35417in" /><img src="/assets/images/RPCHunt/media/image11.png" alt="ScreenshotImg" 
+style="width:6.5in;height:0.40278in" />
+
+<span class="mark">Let's look at that:</span>
+
+<img src="/assets/images/RPCHunt/media/image20.png" alt="ScreenshotImg" 
+style="width:4.52604in;height:0.57292in" /><img src="/assets/images/RPCHunt/media/image27.png" alt="ScreenshotImg" 
+style="width:5.46875in;height:1.75in" />
+
+<span class="mark">On Ghidra:</span>
+
+<img src="/assets/images/RPCHunt/media/image10.png" alt="ScreenshotImg" 
+style="width:3.89063in;height:2.72469in" />
+
+<span class="mark">We found the function. Therefore for that particular
+RPC call, the function pointer does indeed get dynamically changed into
+a different one. This is where we wanted to be, we control the params
+here from the RPC Request, therefore any flaws in the code here can
+easily lead to vulnerabilities if our user control variable is not
+properly dealt with. There is also one other issue that we just glanced
+past, which is the fact, we still aren't sure which UUID RPC will lead
+to this function being executed. Remember, only the third one UUID RPC
+function actually had the security callback with the Security Identifier
+not being SYSTEM. Just looking at this function, we can infer that based
+on param_1 we can control the flow of execution. It does give us pretty
+powerful primitives such as disconnecting other users and changing the
+state of the computer. If this is executed by that non-security callback
+RPC function then this is already a vulnerability through Semi User
+Privilege Escalation (sUPE).</span>
+
+**<span class="mark">A more accurate description of what we have going
+on:</span>**
+
+<span class="mark">The RPC Interface is the function that sets up the
+RPC server through APIs like RPCRegisterServerIfEx:</span>
+
+> <img src="/assets/images/RPCHunt/media/image25.png" alt="ScreenshotImg" 
+> style="width:4.9375in;height:2.22917in" />
+>
+> <span class="mark">The first argument is the Interface structure
+> generated by MIDL (Microsoft Interface Definition Language). The last
+> argument is the security callback which deals with the privilege and
+> conditions required for the user for the RPC to happen.</span>
+
+<span class="mark">Let's look at the structure:</span>
+
+<img src="/assets/images/RPCHunt/media/image2.png" alt="ScreenshotImg" 
+style="width:5.95833in;height:4.66667in" />
+
+<span class="mark">The first two QWORDS look like the UUID for the
+interface and the last one contains the address to another structure
+which is the Server info structure:</span>
+
+<img src="/assets/images/RPCHunt/media/image15.png" alt="ScreenshotImg" 
+style="width:6.36458in;height:2.90625in" />
+
+<span class="mark">This one contains the address to another structure
+having the dispatch table aswell as the unmarshalling process
+(unmarshalling means decoding the information sent from the
+client)</span>
+
+<img src="/assets/images/RPCHunt/media/image14.png" alt="ScreenshotImg" 
+style="width:5.21875in;height:0.70833in" />
+
+<span class="mark">We are pointed to the address of the
+NdrAsyncServerCall (probably responsible for the unmarshalling process)
+and below this, we see this:</span>
+
+<img src="/assets/images/RPCHunt/media/image21.png" alt="ScreenshotImg" 
+style="width:6.07292in;height:2.45833in" />
+
+<span class="mark">This is the dispatch table containing the function
+that will be executed. We have four functions here and previously the
+confusion lied on which of these four functions will be executed however
+that is **completely user dependent** i.e. the user can provide any
+given operational number (0-3) which will be mapped out to these
+functions.</span>
+
+**<span class="mark">Let’s go through each of individual functions in
+the dispatch table:</span>**
+
+1.  <span class="mark">We already know through dynamic analysis, this
+    one called the pointer that didn't change aka contained the error
+    code.</span>
+
+2.  <span class="mark">The second one was also checked and contains
+    several interesting functions that can allow us to Logout other
+    users, change the state of the machine etc.</span>
+
+3.  <span class="mark">The third function takes us to “7ff62ccdde00”
+    which is also error_code however there is a conditional statement
+    which if satisfied will take us to “7ff62ccd66e0” and that is a real
+    function named ‘WMsgNotifyHandler”</span>
+
+4.  <span class="mark">Points to
+    “WmsgSendReconnectionUpdateMessage”</span>
+
+<span class="mark">I am starting to see a pattern here. The function
+name in the dispatch table is where the dynamic pointers eventually take
+us to. Very interesting, it's possible that is also the case for the
+first function and we just happened to miss it. Now, considering we have
+all the function names (thanks to the PDB and Dynamic analysis). We
+should take a look at those functions and check what sort of primitives
+we get our hands on.</span>
+
+<span class="mark">The first function can allow the user to make
+Winlogon.exe connect to an user controlled RPC Server. Potentially
+Interesting. The other two functions are not that interesting either.
+The WMsgPSPHandler is the most interesting among them all. Therefore,
+let's take a look at that:</span>
+
+<span class="mark">It’s similar to how the IRP_DEVICE_CONTROL Function
+worked, we have various op codes that we can use for different
+functionality. Most of it is about logging however there also exists a
+few of them that are actually a bit more impactful, code 0x105, 0x106
+call privileged functions such as WinStationDisconnectWrapper and
+WlStateMachineSetSignal which can be used for DoS.</span>
+
+<span class="mark">**Conclusion:** We were able to play around with RPCs
+and find a misconfigured RPC interface present inside of Winlogon.exe
+that allows for executing certain privileged functions leading to DoS
+and also can allow us to make winlogon login to an attacker-controlled
+RPC Interface.</span>
+
+<span class="mark">**Future Work:** We will look at other applications
+inside of Windows that can lead to more serious vulnerabilities such as
+Local privilege escalation. The methodology is quite similar now, once
+we find a viable candidate, then we can work on making a PoC.</span>
+
+<span class="mark">**Security Disclosure:** All the work was performed
+inside an isolated lab environment and on systems we control. Please
+ensure that you follow proper security etiquette whilst performing such
+research.</span>
