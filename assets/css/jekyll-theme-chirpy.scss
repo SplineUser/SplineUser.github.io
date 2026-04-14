@@ -5,200 +5,89 @@
 
 // ============================================================
 //  Custom theme overrides — cybersecurity research aesthetic
+//  Strategy: CSS-variable colour overrides only.
+//  No structural changes to card/list layout (breaks Chirpy).
 // ============================================================
 
-// ── Colour tokens (dark mode) ────────────────────────────────
-:root[data-mode="dark"],
+// ── Dark mode colour tokens ──────────────────────────────────
 [data-mode="dark"] {
-  --sidebar-bg:          #0d1117;
-  --sidebar-border-color: #21262d;
-  --nav-accent:          #00e5ff;          /* cyan accent */
-  --nav-accent-dim:      rgba(0,229,255,0.12);
-
-  --main-bg:             #0d1117;
-  --card-bg:             #161b22;
-  --card-border-color:   #21262d;
-  --card-shadow:         0 2px 14px rgba(0,0,0,0.55);
-
-  --text-color:          #c9d1d9;
-  --text-muted-color:    #8b949e;
-  --heading-color:       #e6edf3;
-  --link-color:          #00e5ff;
-  --link-underline:      rgba(0,229,255,0.35);
-  --tag-bg:              #161b22;
-  --tag-border:          #21262d;
-  --code-bg:             #161b22;
-  --highlight-bg:        #0d1117;
-  --tb-odd-bg:           #161b22;
+  --sidebar-bg:            #0d1117;
+  --main-bg:               #0d1117;
+  --card-bg:               #161b22;
+  --border-color:          #21262d;
+  --text-color:            #c9d1d9;
+  --text-muted-color:      #8b949e;
+  --heading-color:         #e6edf3;
+  --link-color:            #58a6ff;
+  --link-underline-color:  rgba(88,166,255,0.3);
+  --tag-border:            rgba(88,166,255,0.25);
+  --code-header-muted:     #8b949e;
+  --highlight-bg-color:    #161b22;
+  --tb-odd-bg:             #161b22;
 }
 
-// ── Colour tokens (light mode) ───────────────────────────────
-:root,
-[data-mode="light"] {
-  --nav-accent:          #0070f3;
-  --nav-accent-dim:      rgba(0,112,243,0.08);
-  --card-shadow:         0 1px 8px rgba(0,0,0,0.08);
-}
-
-// ── Sidebar ──────────────────────────────────────────────────
-#sidebar {
-  border-right: 1px solid var(--sidebar-border-color, #21262d);
-
+// ── Sidebar accent ───────────────────────────────────────────
+[data-mode="dark"] #sidebar {
   .site-title a {
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    color: var(--nav-accent);
-    &:hover { text-decoration: none; opacity: 0.85; }
-  }
-
-  .site-subtitle {
-    font-size: 0.78rem;
-    opacity: 0.6;
-    line-height: 1.4;
-  }
-
-  nav {
-    a.nav-link {
-      border-radius: 6px;
-      transition: background 0.18s, color 0.18s;
-      &:hover, &.active {
-        background: var(--nav-accent-dim);
-        color: var(--nav-accent);
-      }
-    }
+    color: #58a6ff;
+    &:hover { opacity: 0.8; text-decoration: none; }
   }
 }
 
-// ── Post cards ───────────────────────────────────────────────
-.post-preview,
-.card {
-  border: 1px solid var(--card-border-color, #21262d);
-  border-radius: 10px;
-  box-shadow: var(--card-shadow);
-  transition: box-shadow 0.2s, border-color 0.2s;
-
-  &:hover {
-    border-color: var(--nav-accent);
-    box-shadow: 0 4px 20px rgba(0,229,255,0.12);
-  }
-}
-
-// ── Post content ─────────────────────────────────────────────
+// ── Post content: heading accent bars ────────────────────────
 .post-content {
-  // Headings with a left accent bar
   h2 {
-    border-left: 3px solid var(--nav-accent);
-    padding-left: 0.7rem;
-    margin-top: 2.2rem;
+    padding-left: 0.65rem;
+    border-left: 3px solid #58a6ff;
+    margin-top: 2rem;
   }
 
   h3 {
-    border-left: 2px solid var(--nav-accent);
     padding-left: 0.55rem;
-    margin-top: 1.8rem;
-    opacity: 0.92;
+    border-left: 2px solid rgba(88,166,255,0.5);
+    margin-top: 1.6rem;
   }
 
-  // Bold section labels (Introduction, Problem, etc.)
-  p > strong:first-child {
-    color: var(--nav-accent);
-    font-weight: 700;
-  }
-
-  // Links
-  a {
-    color: var(--nav-accent);
-    text-decoration-color: var(--link-underline, rgba(0,229,255,0.3));
-    &:hover { text-decoration-color: var(--nav-accent); }
-  }
-
-  // Images — rounded with a subtle border
+  // Images: subtle border + centre alignment
   img {
-    border-radius: 6px;
-    border: 1px solid var(--card-border-color, #21262d);
-    max-width: 100%;
     display: block;
     margin: 1.2rem auto;
+    border-radius: 6px;
+    max-width: 100%;
   }
 
-  // Inline code
-  code:not([class]) {
-    background: var(--code-bg, #161b22);
-    border: 1px solid var(--card-border-color, #21262d);
-    border-radius: 4px;
-    padding: 0.15em 0.4em;
-    font-size: 0.88em;
-    color: #f0883e;          /* warm orange for inline tokens */
+  [data-mode="dark"] & img {
+    border: 1px solid #21262d;
   }
 
-  // Block quotes / tip callouts
+  // Blockquotes
   blockquote {
-    border-left: 3px solid var(--nav-accent);
-    background: var(--nav-accent-dim);
-    border-radius: 0 6px 6px 0;
-    padding: 0.7rem 1rem;
+    border-left-width: 3px;
     font-style: normal;
-    p { margin: 0; }
-  }
-
-  // Bulleted stat lists (like the driver stats block)
-  ul li strong {
-    color: var(--nav-accent);
-    font-variant-numeric: tabular-nums;
   }
 }
 
 // ── Code blocks ───────────────────────────────────────────────
 div.highlight,
 figure.highlight {
-  border-radius: 8px;
-  border: 1px solid var(--card-border-color, #21262d);
-  box-shadow: var(--card-shadow);
+  border-radius: 6px;
   overflow: hidden;
 
-  pre {
-    margin: 0;
-    font-size: 0.855rem;
-    line-height: 1.6;
-  }
+  pre { font-size: 0.86rem; line-height: 1.6; }
 }
 
-// ── Tags ─────────────────────────────────────────────────────
-.post-tags a,
-span.tag-name {
-  border: 1px solid var(--tag-border, #21262d);
+// ── Inline code ───────────────────────────────────────────────
+[data-mode="dark"] code:not([class]) {
+  color: #f0883e;
+  background: #161b22;
+  border: 1px solid #21262d;
   border-radius: 4px;
-  padding: 0.15em 0.5em;
-  font-size: 0.78rem;
-  transition: border-color 0.15s, color 0.15s;
-
-  &:hover {
-    border-color: var(--nav-accent);
-    color: var(--nav-accent);
-  }
+  padding: 0.12em 0.4em;
+  font-size: 0.87em;
 }
 
-// ── Category / archive headings ───────────────────────────────
-.categories h2,
-.tag-name {
-  font-size: 0.9rem;
-}
-
-// ── Home page intro ──────────────────────────────────────────
-#post-list .post-preview .post-meta {
-  font-size: 0.8rem;
-  opacity: 0.65;
-}
-
-// ── Back-to-top button ────────────────────────────────────────
-#back-to-top {
-  border-color: var(--nav-accent);
-  color: var(--nav-accent);
-  &:hover { background: var(--nav-accent-dim); }
-}
-
-// ── Scrollbar (webkit) ────────────────────────────────────────
-::-webkit-scrollbar            { width: 6px; height: 6px; }
+// ── Slim scrollbar ────────────────────────────────────────────
+::-webkit-scrollbar            { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track      { background: transparent; }
 ::-webkit-scrollbar-thumb      { background: #30363d; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover{ background: #484f58; }
