@@ -6,6 +6,9 @@
 
 setlocal
 
+:: ── Always run from the site root (parent of this script's folder) ───────────
+cd /d "%~dp0.."
+
 echo.
 echo =====================================================
 echo   Blog Setup Script (Windows)

@@ -5,6 +5,9 @@
 
 setlocal
 
+:: ── Always run from the site root (parent of this script's folder) ───────────
+cd /d "%~dp0.."
+
 set HOST=127.0.0.1
 set PORT=4000
 set PROD=false

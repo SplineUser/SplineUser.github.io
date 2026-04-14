@@ -135,9 +135,10 @@ comments:
 # Self-hosted static assets, optional › https://github.com/cotes2020/chirpy-static-assets
 assets:
   self_host:
-    enabled: true  # serve Bootstrap/FontAwesome from assets/lib (no CDN dependency)
-    # only applies in production so local dev still uses CDN if assets/lib is empty
-    env: production
+    enabled: # boolean, keep empty means false
+    # specify the Jekyll environment, empty means both
+    # only works if `assets.self_host.enabled` is 'true'
+    env: # [development | production]
 
 pwa:
   enabled: true # The option for PWA feature (installable)

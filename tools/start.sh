@@ -5,6 +5,9 @@
 
 set -e
 
+# ── Always run from the site root (parent of this script's folder) ───────────
+cd "$(dirname "$0")/.."
+
 HOST="127.0.0.1"
 PORT="4000"
 PROD=false
