@@ -1,0 +1,204 @@
+---
+---
+
+@import "main";
+
+// ============================================================
+//  Custom theme overrides — cybersecurity research aesthetic
+// ============================================================
+
+// ── Colour tokens (dark mode) ────────────────────────────────
+:root[data-mode="dark"],
+[data-mode="dark"] {
+  --sidebar-bg:          #0d1117;
+  --sidebar-border-color: #21262d;
+  --nav-accent:          #00e5ff;          /* cyan accent */
+  --nav-accent-dim:      rgba(0,229,255,0.12);
+
+  --main-bg:             #0d1117;
+  --card-bg:             #161b22;
+  --card-border-color:   #21262d;
+  --card-shadow:         0 2px 14px rgba(0,0,0,0.55);
+
+  --text-color:          #c9d1d9;
+  --text-muted-color:    #8b949e;
+  --heading-color:       #e6edf3;
+  --link-color:          #00e5ff;
+  --link-underline:      rgba(0,229,255,0.35);
+  --tag-bg:              #161b22;
+  --tag-border:          #21262d;
+  --code-bg:             #161b22;
+  --highlight-bg:        #0d1117;
+  --tb-odd-bg:           #161b22;
+}
+
+// ── Colour tokens (light mode) ───────────────────────────────
+:root,
+[data-mode="light"] {
+  --nav-accent:          #0070f3;
+  --nav-accent-dim:      rgba(0,112,243,0.08);
+  --card-shadow:         0 1px 8px rgba(0,0,0,0.08);
+}
+
+// ── Sidebar ──────────────────────────────────────────────────
+#sidebar {
+  border-right: 1px solid var(--sidebar-border-color, #21262d);
+
+  .site-title a {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--nav-accent);
+    &:hover { text-decoration: none; opacity: 0.85; }
+  }
+
+  .site-subtitle {
+    font-size: 0.78rem;
+    opacity: 0.6;
+    line-height: 1.4;
+  }
+
+  nav {
+    a.nav-link {
+      border-radius: 6px;
+      transition: background 0.18s, color 0.18s;
+      &:hover, &.active {
+        background: var(--nav-accent-dim);
+        color: var(--nav-accent);
+      }
+    }
+  }
+}
+
+// ── Post cards ───────────────────────────────────────────────
+.post-preview,
+.card {
+  border: 1px solid var(--card-border-color, #21262d);
+  border-radius: 10px;
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.2s, border-color 0.2s;
+
+  &:hover {
+    border-color: var(--nav-accent);
+    box-shadow: 0 4px 20px rgba(0,229,255,0.12);
+  }
+}
+
+// ── Post content ─────────────────────────────────────────────
+.post-content {
+  // Headings with a left accent bar
+  h2 {
+    border-left: 3px solid var(--nav-accent);
+    padding-left: 0.7rem;
+    margin-top: 2.2rem;
+  }
+
+  h3 {
+    border-left: 2px solid var(--nav-accent);
+    padding-left: 0.55rem;
+    margin-top: 1.8rem;
+    opacity: 0.92;
+  }
+
+  // Bold section labels (Introduction, Problem, etc.)
+  p > strong:first-child {
+    color: var(--nav-accent);
+    font-weight: 700;
+  }
+
+  // Links
+  a {
+    color: var(--nav-accent);
+    text-decoration-color: var(--link-underline, rgba(0,229,255,0.3));
+    &:hover { text-decoration-color: var(--nav-accent); }
+  }
+
+  // Images — rounded with a subtle border
+  img {
+    border-radius: 6px;
+    border: 1px solid var(--card-border-color, #21262d);
+    max-width: 100%;
+    display: block;
+    margin: 1.2rem auto;
+  }
+
+  // Inline code
+  code:not([class]) {
+    background: var(--code-bg, #161b22);
+    border: 1px solid var(--card-border-color, #21262d);
+    border-radius: 4px;
+    padding: 0.15em 0.4em;
+    font-size: 0.88em;
+    color: #f0883e;          /* warm orange for inline tokens */
+  }
+
+  // Block quotes / tip callouts
+  blockquote {
+    border-left: 3px solid var(--nav-accent);
+    background: var(--nav-accent-dim);
+    border-radius: 0 6px 6px 0;
+    padding: 0.7rem 1rem;
+    font-style: normal;
+    p { margin: 0; }
+  }
+
+  // Bulleted stat lists (like the driver stats block)
+  ul li strong {
+    color: var(--nav-accent);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+// ── Code blocks ───────────────────────────────────────────────
+div.highlight,
+figure.highlight {
+  border-radius: 8px;
+  border: 1px solid var(--card-border-color, #21262d);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+
+  pre {
+    margin: 0;
+    font-size: 0.855rem;
+    line-height: 1.6;
+  }
+}
+
+// ── Tags ─────────────────────────────────────────────────────
+.post-tags a,
+span.tag-name {
+  border: 1px solid var(--tag-border, #21262d);
+  border-radius: 4px;
+  padding: 0.15em 0.5em;
+  font-size: 0.78rem;
+  transition: border-color 0.15s, color 0.15s;
+
+  &:hover {
+    border-color: var(--nav-accent);
+    color: var(--nav-accent);
+  }
+}
+
+// ── Category / archive headings ───────────────────────────────
+.categories h2,
+.tag-name {
+  font-size: 0.9rem;
+}
+
+// ── Home page intro ──────────────────────────────────────────
+#post-list .post-preview .post-meta {
+  font-size: 0.8rem;
+  opacity: 0.65;
+}
+
+// ── Back-to-top button ────────────────────────────────────────
+#back-to-top {
+  border-color: var(--nav-accent);
+  color: var(--nav-accent);
+  &:hover { background: var(--nav-accent-dim); }
+}
+
+// ── Scrollbar (webkit) ────────────────────────────────────────
+::-webkit-scrollbar            { width: 6px; height: 6px; }
+::-webkit-scrollbar-track      { background: transparent; }
+::-webkit-scrollbar-thumb      { background: #30363d; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover{ background: #484f58; }
