@@ -16,13 +16,13 @@ timezone:
 
 title: Cybersecurity Research Blog
 
-tagline: Exploring advanced threats, exploitation, and defense strategies
+tagline: Security research notes on Windows internals, reverse engineering, and vulnerability discovery.
 
 description: >-
-  A technical blog focused on cybersecurity research — covering APT simulation,
-  malware evasion, LPE, kernel exploitation, and vulnerability discovery.
-  Written for researchers, practitioners, and security enthusiasts who want
-  deep, hands-on insights into both offensive and defensive security.
+  A technical blog focused on security research, Windows internals, binary
+  analysis, exploitability research, and vulnerability discovery. Written as
+  lab notes, experiments, debugging notes, and technical writeups for
+  researchers and security practitioners.
 
 
 # Fill in the protocol & hostname for your site.

@@ -1,10 +1,10 @@
 ---
 layout: post
-title: "Adding Kernel Primitives and Information Gathering: FeebleDream development PT-2"
+title: "Lab Notes: Kernel Primitive Interfaces and System Information Gathering"
 date: 2025-09-15
-categories: [MalwareDevelopment, FeebleDream]
+categories: [Lab Notes, Security Experiments]
 tags: [malware, C++, IOCTL, DeviceIoControl, kernel, Windows, sKPE]
-description: "FeebleDream v3.0 PT-2: implementing the IOCTL dispatch wrapper for kernel primitives (sKPE) and a COM-based system information gathering module."
+description: "Lab notes on implementing an IOCTL dispatch wrapper for kernel primitive experiments and a COM-based system information gathering module."
 ---
 
 
