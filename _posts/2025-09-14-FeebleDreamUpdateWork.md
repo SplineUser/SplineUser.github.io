@@ -1,10 +1,10 @@
 ---
 layout: post
-title: "Making THE Malware: FeebleDream development"
+title: "Lab Notes: Logging and Driver-Loading Components"
 date: 2025-09-14
-categories: [MalwareDevelopment, FeebleDream]
+categories: [Lab Notes, Security Experiments]
 tags: [malware, C++, BYOVD, drivers, logging, Windows]
-description: "FeebleDream v3.0 development log: building a structured logging system and a resilient driver-loading module with service management."
+description: "Development notes on building a structured logging system and a driver-loading module with service management in an isolated lab."
 ---
 
 

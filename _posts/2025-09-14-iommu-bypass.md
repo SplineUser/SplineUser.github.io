@@ -2,7 +2,7 @@
 layout: post
 title: "IOMMU Bypass: Finding Potential Misconfiguration"
 date: 2025-09-14
-categories: [Research, KernelExploitation]
+categories: [Research, Windows Internals]
 tags: [IOMMU, DMA, ACPI, DMAR, PCI, kernel, hardware]
 description: "Investigating IOMMU misconfiguration as an avenue to exploit a PCI Configuration Space R/W primitive — dumping ACPI DMAR tables and scanning reserved memory regions."
 ---

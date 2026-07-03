@@ -2,7 +2,7 @@
 layout: post
 title: "Expanding the Hunting Horizons using RIP Manipulation"
 date: 2025-09-05
-categories: [Research, KernelExploitation]
+categories: [Research, Windows Internals]
 tags: [kernel, drivers, RIP, WinDBG, Ghidra, windows]
 description: "Using RIP register manipulation via an MSR R/W vulnerability to force hidden drivers to expose their devices — methodology, observations, and findings."
 ---

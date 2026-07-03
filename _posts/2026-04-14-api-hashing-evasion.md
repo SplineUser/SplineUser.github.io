@@ -1,13 +1,13 @@
 ---
 layout: post
-title: "Component Engineering: Automatic Evasive API Hashing"
-date: 2026-04-14
-categories: [MalwareDevelopment, FeebleDream]
-tags: [malware, C++, API-hashing, evasion, VirusTotal, XP, software-engineering, Windows]
-description: "Building an automated API hashing tool as a sub-component of the APT simulation framework — using Extreme Programming to iterate from JSON config parsing through stub generation, compilation, and VirusTotal submission."
+title: "Component Engineering: API Hashing Implementation Notes"
+date: 2025-09-01
+categories: [Tooling, Lab Notes]
+tags: [C++, API-hashing, Windows, software-engineering, reverse-engineering]
+description: "Building an API hashing component in C/C++ — using iterative engineering notes from JSON config parsing through stub generation and compilation."
 ---
 
-**Introduction:** This is a sub-component of the APT simulation tool, this part is responsible for minimizing VT score via the usage of API Hashing to remove different APIs present in the import table of the PE. The goal is to automatically hash APIs from a given list, compile it and test it against VT.
+**Introduction:** This lab note documents an API hashing component in C/C++. The goal is to automatically hash APIs from a given list, generate implementation stubs, compile the result, and document the engineering tradeoffs involved.
 
 **Software Engineering utilization:** This mini-project will utilize software engineering principles for efficiently developing the program and to ensure that it will be of higher quality. The software engineering methodology is derived from my general big picture understanding of the subject.
 
