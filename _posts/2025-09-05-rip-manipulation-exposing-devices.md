@@ -7,326 +7,470 @@ tags: [kernel, drivers, RIP, WinDBG, Ghidra, windows]
 description: "Using RIP register manipulation via an MSR R/W vulnerability to force hidden drivers to expose their devices — methodology, observations, and findings."
 ---
 
+## Introduction
 
-**Introduction:** Drivers expose devices using IoCreateDevice +
-IoCreateSymbolicLink, However despite the presence of these APIs inside
-of a driver, it doesn't necessarily mean that they are bound to expose
-those drivers. There are many reasons why this might not work, It could
-be a registry read fail that acts as some sort of check or maybe the
-driver requires some other driver to be loaded and present for them to
-expose their device
+When hunting for vulnerable Windows drivers, one of the first practical questions is simple: does the driver expose a reachable interface that user mode can talk to?
 
-**Observation:** We tested the drivers in bulk using our automated
-device enumeration python script and our driver collection script. In
-total, we found 8650 different unique drivers based on signatures (refer
-image 1). Of which we found 1226 drivers containing both of these API
-calls at once. We found 1536 drivers that were signed and also had
-either of the APIs in them. Over 509 drivers actually were loadable with
-just 63 drivers exposing any devices, 36 of which were test devices we
-accidentally got drivers to expose through meeting up criteria, probably
-loading a prerequisite driver. The remaining devices had a lot of
-intersection as they were usually created by the same type of driver but
-of different versions but had similar if not exactly the same IOCTL
-function calls, making them duplicates for our hunting research. In
-total, we found 10 unique devices of the total 8650 unique drivers we
-had. That is just 0.115%, most of these drivers simply weren't signed
-however. There existed the intersection of drivers which had both of the
-API calls and drivers which were signed. Among which, most did not
-expose the devices despite having the conditions to do so. Our
-assumption is that they failed some pre-requisite check.  
-  
-Here is a clearer representation:
+At a static level, this can look straightforward. If a driver references APIs such as IoCreateDevice and IoCreateSymbolicLink, it may appear to have the ingredients needed to expose a device object and a symbolic link for user-mode access. In practice, however, those references are only weak signals. Device exposure can depend on registry configuration, hardware presence, helper drivers, initialization order, or vendor-specific runtime checks. A driver can contain the relevant code and still never expose a usable interface in a normal lab environment.
 
-- **8650** Unique Drivers
+This became a bottleneck during my driver-hunting pipeline. Across a corpus of 8,650 unique driver samples, only a very small number produced unique reachable device interfaces during dynamic testing. That raised a useful research question: if device-creation logic exists inside a driver but is not reached naturally, can controlled kernel-mode execution redirection be used to reach those hidden paths?
 
-- **1226** Contained both the API Calls
+This post explores that question through a case study on RUSB3XHC.sys. Using a controlled lab primitive for RIP redirection, I attempted to redirect execution toward suspected device-creation code and then validate whether a new user-accessible interface appeared. The result was negative, but useful: simply redirecting RIP into a suspected function was not enough. The driver still expected specific calling context, register state, initialized structures, and dispatch-path behavior.
 
-- **1536** Signed **AND** contained either of the APIs
+The main takeaway is that forced device exposure is not a generic “jump to IoCreateDevice” problem. It is a driver-specific reachability and state-reconstruction problem. This post walks through the corpus observation, the hypothesis, the failed attempts, and the lessons learned for future driver-hunting automation.
 
-- **509** Drivers loadable
+## Corpus Collection & Results
 
-- **63** Drivers exposing devices
+Before trying to force any hidden device-creation paths manually, we first wanted to understand how often drivers in our collection actually exposed reachable user-mode interfaces under normal testing.
 
-- **36** were test devices
+We tested the drivers in bulk using our automated driver collection pipeline and a Python-based device enumeration script. In total, we collected 8,650 unique driver samples, deduplicated by SHA-256 hash.
 
-- **10** unique devices
+From there, we looked for drivers that referenced the usual device-creation APIs, mainly IoCreateDevice and IoCreateSymbolicLink, and then compared those static signals against what actually became reachable after attempting to load the drivers in our lab environment.
 
-- **0.115%** of the devices had unique devices for testing
+The results looked like this:
 
-<img src="{{ '/assets/images/rip-manipulation/media/image26.png' | relative_url }}"
-style="width:5.21875in;height:0.91667in" alt="image26" />
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image18.png' | relative_url }}" alt="image18">
 
-**Problem:** We clearly see the incredibly low yield of drivers that
-actually end up exposing their devices. To increase our yield rate, we
-are trying a new method to force these drivers to expose those hidden
-devices in the intersection section as described above.
+</figure>
 
-**Our methodology:** Since we can control the RIP pointer through our
-MSR R/W vuln (A post will be published on this if not done yet), we will
-attempt to utilize this primitive to point the RIP**\*** where we want
-it to be.
+This shows the core problem clearly: out of 8,650 unique driver samples, only 10 unique device interfaces were useful for testing. That gives us a final yield of roughly 0.115%.
 
-**\*Note:** Since we are in kernel space, we cannot utilize ROP chaining
-due to SMEP protection stopping any user-mode space stack to be read
-from (which we control). More on this in a different post soon.
+The low yield suggests that static references to IoCreateDevice and IoCreateSymbolicLink are not enough by themselves. A driver can contain the right APIs, be signed, and even be loadable, while still failing to expose a usable device interface at runtime.
 
-Since we are forced to only utilize ROP gadgets individually and no
-chaining is permitted, our kernel CE capabilities are significantly
-reduced. However, if we can expose these new drivers and test them out
-for vulnerabilities, we could find 0-days that allow for Kernel Write.
-Finally allowing us for greater kernel CE control.
+Our assumption is that many of these drivers are gated behind some kind of prerequisite check. This could be a registry read (such as the ones made during installation with a .inf file), hardware presence check, dependency on another driver, initialization order requirement, or some other vendor-specific condition that prevents the device-creation path from being reached in a normal lab setup.
 
-Our approach consists of the following methods:
+That gap between “the device-creation code exists” and “the device is actually reachable from user mode” is what motivated the next part of the research: can we use controlled kernel-mode RIP redirection to reach device-creation paths that are present in the driver, but not naturally reached during normal loading?
 
-1.  List every driver in the intersection
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image25.png' | relative_url }}" alt="Figure 1 — Driver collection summary.">
 
-2.  Find the offset where the device execution is set to be via
-    IoCreateDevice shortly probably followed by IoCreateSymbolicLink
+  <figcaption>Figure 1 — Driver collection summary.</figcaption>
 
-3.  Set the RIP in there using WinDBG for testing
+</figure>
 
-4.  Use WinOBJ to check for any new devices
+## Problem Statement
 
-This approach is theoretical so far and will need to be tested to see if
-this actually works or something like pre-conditions will block us, this
-is also hugely dependent upon the drivers code and automating this could
-be an issue however lets first try this manually to see if this even
-works to begin with.
+The corpus results show the core problem: even when a driver is signed, loadable, and contains references to device-creation APIs, it still may not expose a reachable user-mode device interface.
 
-**  
-The first attempt:** So the first attempt is supposed to be simple, we
-found the function in Ghidra that has IoCreateDevice in it.
+For driver vulnerability research, this creates a major bottleneck. If the device interface is never exposed, then the IOCTL surface cannot be reached through normal user-mode testing. This means that a large number of drivers may appear interesting during static analysis, but still produce no usable testing surface during dynamic analysis.
 
-<img src="{{ '/assets/images/rip-manipulation/media/image4.png' | relative_url }}"
-style="width:5.54167in;height:0.5in" alt="image4" />
+The important gap is between “the device-creation code exists” and “the device is actually reachable from user mode.” The rest of this post explores whether that gap can be tested manually by redirecting execution toward suspected device-creation paths.
+
+## Research Hypothesis
+
+The hypothesis is simple: if a driver contains a device-creation path that is present in the binary but not naturally reached during normal loading, controlled kernel-mode RIP redirection may allow us to reach that path manually.
+
+The goal is not to claim that this technique works generically across every driver. The goal is to test whether RIP redirection can be used as a research primitive for device-exposure testing. If we can redirect execution toward a suspected IoCreateDevice / IoCreateSymbolicLink path and satisfy the expected runtime state, we may be able to expose device interfaces that would otherwise remain unreachable through normal user-mode testing.
+
+The more important question is where this approach breaks. Is the problem simply that the target code path is not being reached, or does the driver require specific register values, initialized structures, hardware state, registry values, or helper-driver interaction before the device-creation path can execute successfully?
+
+## Lab Setup and Constraints
+
+For this experiment, we had two possible primitives available for controlling RIP in our lab environment.
+
+The first was an MSR read/write primitive which, with HVCI disabled, allowed us to redirect execution through the IA32_LSTAR pointer. The second was a separate control-flow hijack primitive caused by a signed AMD driver passing a user-controlled IOCTL buffer into a function pointer call. For this writeup, we focus only on the MSR read/write path.
+
+The idea was to use this primitive to redirect RIP toward a suspected device-creation path inside the target driver and then check whether a new device interface appeared through WinObj or our device enumeration script.
+
+There are important limitations here. With the current primitive, user-controlled ROP chaining is not practical. SMEP prevents supervisor-mode execution from user pages, and in this setup we do not have clean control over a trusted kernel stack or a reliable stack pivot target. Because of that, this experiment focuses on direct RIP redirection into individual target locations rather than a full kernel ROP chain.
+
+This limitation matters because reaching the target address is only one part of the problem. The target function may still expect a valid calling context. This could include specific register values, initialized structures, object pointers, or previous driver state. If those conditions are not satisfied, then the result is likely to be a crash rather than successful device exposure.
+
+## Experimental Plan
+
+The manual approach for testing this was straightforward:
+
+- List the drivers in the signed, loadable, device-API overlap set.
+
+- Use Ghidra to find functions that reference IoCreateDevice and, ideally, IoCreateSymbolicLink.
+
+- Calculate the relevant RVA for the suspected device-creation path.
+
+- Use WinDbg to find the loaded base address of the driver and resolve the runtime address.
+
+- Redirect RIP toward the suspected path inside the lab environment.
+
+- Use WinObj and our device enumeration script to check whether a new device interface appeared.
+
+- If the attempt failed, debug whether the issue was reachability, register state, initialized structures, or some other driver-specific precondition.
+
+At this stage, the approach was still theoretical. The main purpose of the first test was to see whether direct RIP redirection was enough to expose a hidden device interface, or whether the driver would require additional state reconstruction before the target path could execute correctly.
+
+## Case Study: RUSB3XHC.sys
+
+For the first manual test, we picked RUSB3XHC.sys as the target driver. The goal was to start with a simple case study: find the function that contains the IoCreateDevice call, resolve the runtime address, redirect RIP there, and then check whether the driver exposes a new device interface.
+
+This section walks through the attempts, the crashes, the breakpoint analysis, and the final reason this specific driver did not expose a usable interface through our approach.
+
+### Attempt 1: Direct RIP Redirection
+
+The first attempt was supposed to be simple. We found the function in Ghidra that contained the IoCreateDevice call.
 
 We then looked at the offset inside of Ghidra:
 
-<img src="{{ '/assets/images/rip-manipulation/media/image15.png' | relative_url }}"
-style="width:3.34375in;height:0.46875in" alt="image15" />
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image22.png' | relative_url }}" alt="Figure 2 — IoCreateDevice reference in Ghidra.">
 
-We found the real offset by using the RVA - VA to get 0x3395b. To get
-the base address of the driver, we utilized the lmDvm command to get the
-information for our driver.
+  <figcaption>Figure 2 — IoCreateDevice reference in Ghidra.</figcaption>
 
-<img src="{{ '/assets/images/rip-manipulation/media/image19.png' | relative_url }}"
-style="width:6.38542in;height:1.54167in" alt="image19" />
+</figure>
 
-We confirmed if this was the right address by using the follow command
-and comparing the result with the Ghidra output:
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image15.png' | relative_url }}" alt="Figure 2 — IoCreateDevice reference in Ghidra.">
 
-<img src="{{ '/assets/images/rip-manipulation/media/image1.png' | relative_url }}"
-style="width:6.5in;height:0.52778in" alt="image1" />
+  <figcaption>Figure 2 — IoCreateDevice reference in Ghidra.</figcaption>
 
-They matched. So we set the RIP to
-“fffff802\`54e1395b” so it would call the function.
-We used the following command for that:  
-<img src="{{ '/assets/images/rip-manipulation/media/image18.png' | relative_url }}"
-style="width:6.5in;height:0.95833in" alt="image18" />  
-  
-As you can see, this approach crashed our VM \[Fatal System Error:
-0x000000d1
+</figure>
 
-(0xFFFFF80254E1395B,0x000000000000000D,0x0000000000000008,0xFFFFF80254E1395B)
+From there, we calculated the relevant RVA for the target location. In this case, the offset came out to 0x3395b. To get the runtime address, we used WinDbg’s lmDvm command to get the loaded base address of the driver.
 
-\]
+We confirmed that this was the correct address by using the following command and comparing the result with the Ghidra output:
 
-This clearly was just the first attempt to see what
-would happen and as expected. Directly trying to execute this function
-when our register values weren't properly configured would lead to this.
-0xD1 is the “DRIVER_IRQL_NOT_LESS_OR_EQUAL” Error and was caused due to
-bad register values. Lets try to observe what is actually happening
-behind the scenes. Lets put a breakpoint on IoCreateDevice to see what
-register values are passed in and whether we even reach that point or
-not.  
-  
-We see the following function and where exactly the API call is present
-at:  
-<img src="{{ '/assets/images/rip-manipulation/media/image23.png' | relative_url }}"
-style="width:6.5in;height:3.51389in" alt="image23" />  
-  
-From Ghidra, we also discover the offset to be: 0x36a2eh. Lets set a
-breakpoint there and restart the driver:  
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image10.png' | relative_url }}" alt="Figure 3 — Runtime address validation in WinDbg.">
 
+  <figcaption>Figure 3 — Runtime address validation in WinDbg.</figcaption>
 
-<img src="{{ '/assets/images/rip-manipulation/media/image2.png' | relative_url }}"
-style="width:6.5in;height:1.61111in" alt="image2" />
+</figure>
 
-We see that the function is never called to begin
-with. Let's analyze the why:
+The output matched. So, for the first test, we set RIP to fffff802`54e1395b so execution would land at the suspected target location. We used the following command for that:
 
-  
-We see the following function that are called in a step routine for
-IRP_DISPATCH_TABLE:
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image9.png' | relative_url }}" alt="Figure 4 — RIP redirected to the suspected path.">
 
-<img src="{{ '/assets/images/rip-manipulation/media/image14.png' | relative_url }}"
-style="width:5.65625in;height:4.30208in" alt="image14" />
+  <figcaption>Figure 4 — RIP redirected to the suspected path.</figcaption>
 
-Now we should confirm what param_1 + 0x30 actually
-points to, from WinDBG we find the following at the breakpoint:
+</figure>
 
-<img src="{{ '/assets/images/rip-manipulation/media/image3.png' | relative_url }}"
-style="width:6.5in;height:1.83333in" alt="image3" />
+As expected, this crashed the VM:
 
-R12 holds the param_1 value, lets dump the registers
-to see what param_1 actually is:
+```text
+Fatal System Error: 0x000000d1 (0xFFFFF80254E1395B, 0x000000000000000D, 0x0000000000000008, 0xFFFFF80254E1395B)
+```
 
-<img src="{{ '/assets/images/rip-manipulation/media/image22.png' | relative_url }}"
-style="width:2.14583in;height:0.60417in" alt="image22" />
+This was not too surprising. This was the first attempt, and the goal was mainly to see what would happen if we directly redirected execution into the suspected device-creation path. Since the expected register values and calling context were not properly configured, the function did not have the state it needed to execute safely.
 
-Let's look at the address and its offset by
-30:
+The bugcheck was 0xD1, also known as DRIVER_IRQL_NOT_LESS_OR_EQUAL. In this case, the likely issue was not that the target address was wrong, but that directly landing inside the function without reconstructing the expected context caused the driver to access invalid state.
 
-<img src="{{ '/assets/images/rip-manipulation/media/image16.png' | relative_url }}"
-style="width:5.51042in;height:1.97917in" alt="image16" />
+### Result 1: Calling Context Matters
 
-This does not particularly look like a dispatch
-table. Also we know “ffff8c87\`e756f950” will be stored inside RAX and
-its +8 offset would be stored:
+The crash gave us the first useful result: reaching the target address is not enough.
 
-<img src="{{ '/assets/images/rip-manipulation/media/image9.png' | relative_url }}"
-style="width:5.69792in;height:0.46875in" alt="image9" />
+If we redirect RIP into a function that expects specific register values, initialized structures, object pointers, or previous driver state, then the function may immediately fail. This means direct RIP redirection is only useful if the target path can tolerate the current context, or if we can reconstruct enough of the expected state before calling it.
 
-From the assembly code, we can see that the code
-simply stores the pointer of the Function “IRP_CreateDevice” into
-“ffff8c87\`e756f958”
+So instead of continuing to blindly redirect RIP, the next step was to observe what the driver was naturally doing. Specifically, we wanted to know whether the normal load path ever reached IoCreateDevice, and if it did, what values were being passed around at runtime.
 
-From here, we see the IRP_CreateDevice function. This
-could be an Induced Device Create routine. Therefore, we could attempt
-to use the CreateFileW API call to make this driver expose the device.
-The only problem is that we do not know what the device name is. Lets
-use static analysis in Ghidra to possibly find it hardcoded.
+## Tracing the Natural IoCreateDevice Path
 
-<img src="{{ '/assets/images/rip-manipulation/media/image20.png' | relative_url }}"
-style="width:5.84375in;height:1.58333in" alt="image20" />  
-  
-Here we see references to “DosDevices” and “DosDevices\\HCD”,
-Interestingly enough, we see certain references to similar strings
-inside of WinObj:  
-<img src="{{ '/assets/images/rip-manipulation/media/image6.png' | relative_url }}"
-style="width:6.5in;height:0.59722in" alt="image6" />
+We found the function where the API call was present:
 
-However these are not the devices created by the
-driver, more importantly, we see the mention of the string “RENESAS”
-inside of the driver. We see potential device names such as
-“RENESAS_USB3\\ROOT_HUB30&VID….” This indicates that the device name
-potentially starts with “Global\\RENESAS_USB3”. We also see
-“\\DosDevice\\HCD”  
-  
-Let’s attempt to force the creation of the device using the CreateFileW
-API.
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image1.png' | relative_url }}" alt="Figure 5 — Suspected IoCreateDevice callsite.">
 
-Before:  
-<img src="{{ '/assets/images/rip-manipulation/media/image12.png' | relative_url }}"
-style="width:1.85417in;height:0.27083in" alt="image12-before" />  
+  <figcaption>Figure 5 — Suspected IoCreateDevice callsite.</figcaption>
+
+</figure>
+
+From Ghidra, we also found the relevant offset to be 0x36a2e. We then set a breakpoint there and restarted the driver:
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image24.png' | relative_url }}" alt="Figure 6 — Breakpoint on the suspected callsite.">
+
+  <figcaption>Figure 6 — Breakpoint on the suspected callsite.</figcaption>
+
+</figure>
+
+The breakpoint was never hit. This told us that the function was not being called during the normal driver load path.
+
+So the next question became: why is this device-creation path not being reached?
+
+## Finding the Suspected IRP_MJ_CREATE Path
+
+Looking further, we found a function involved in setting up what looked like the IRP dispatch flow:
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image8.png' | relative_url }}" alt="Figure 7 — Dispatch setup routine.">
+
+  <figcaption>Figure 7 — Dispatch setup routine.</figcaption>
+
+</figure>
+
+At this point, we wanted to understand what param_1 + 0x30 was actually pointing to. From WinDbg, we reached the relevant breakpoint and started inspecting the runtime state.
+
+R12 was holding the param_1 value, so we dumped the registers to see what param_1 actually was:
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image22.png' | relative_url }}" alt="Figure 8 — Register dump for param_1.">
+
+  <figcaption>Figure 8 — Register dump for param_1.</figcaption>
+
+</figure>
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image6.png' | relative_url }}" alt="Figure 8 — Register dump for param_1.">
+
+  <figcaption>Figure 8 — Register dump for param_1.</figcaption>
+
+</figure>
+
+Then we looked at the address at param_1 + 0x30:
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image12.png' | relative_url }}" alt="Figure 9 — Inspecting param_1 + 0x30.">
+
+  <figcaption>Figure 9 — Inspecting param_1 + 0x30.</figcaption>
+
+</figure>
+
+This did not particularly look like a normal dispatch table at first. However, we also knew that ffff8c87`e756f950 would be stored inside RAX, and its +8 offset would be used next:
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image21.png' | relative_url }}" alt="Figure 10 — Pointer assignment target.">
+
+  <figcaption>Figure 10 — Pointer assignment target.</figcaption>
+
+</figure>
+
+From the assembly, we can see that the code stores the pointer to the IRP_CreateDevice function into ffff8c87’e756f958.
+
+This made the path more interesting. The driver was not simply calling the device-creation function directly during initialization. Instead, it looked like IRP_CreateDevice was being placed into a dispatch-related structure, potentially as a create routine.
+
+From here, we inspected the IRP_CreateDevice function itself. This looked like it could be an induced device-creation routine. If that was true, then we could try to trigger it through a user-mode open attempt using CreateFileW.
+
+The immediate problem was that we did not know the correct device name. So, we went back into Ghidra and searched for hardcoded device-related strings.
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image19.png' | relative_url }}" alt="Figure 11 — Device strings in Ghidra.">
+
+  <figcaption>Figure 11 — Device strings in Ghidra.</figcaption>
+
+</figure>
+
+Here, we saw references to DosDevices and DosDevices\\HCD. Interestingly enough, we also saw similar-looking entries inside WinObj:
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image17.png' | relative_url }}" alt="Figure 12 &amp; 13 — Similar names in WinObj.">
+
+  <figcaption>Figure 12 & 13 — Similar names in WinObj.</figcaption>
+
+</figure>
+
+However, these did not appear to be devices created by this driver. More importantly, we saw references to RENESAS inside the driver. There were potential device names such as RENESAS_USB3\\ROOT_HUB30&VID..., which suggested that the device name may start with something like Global\\RENESAS_USB3. We also saw a reference to \\DosDevices\\HCD.
+
+### Attempt 2: Triggering the Path from User Mode
+
+With these strings in mind, we attempted to trigger the suspected path from user mode.
+
+Before:
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image3.png' | relative_url }}" alt="Figure 14 — Device namespace before the trigger.">
+
+  <figcaption>Figure 14 — Device namespace before the trigger.</figcaption>
+
+</figure>
+
 After:
 
-<img src="{{ '/assets/images/rip-manipulation/media/image12.png' | relative_url }}"
-style="width:1.85417in;height:0.27083in" alt="image12-after" />  
-  
-Not a success. Let's analyze why this might be the case, from the code
-section, we can see there is a conditional if statement that if
-satisfied will trigger the section where the IRP_CreateDevice function
-lives:  
-<img src="{{ '/assets/images/rip-manipulation/media/image24.png' | relative_url }}"
-style="width:5.14583in;height:0.40625in" alt="image24" />  
-From the looks of it, it seems to be looking for a magic value inside of
-param_3. It wants param three to start with the following: “0x94 0x03
-0x00”. Lets see what param_3 actually even is
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image3.png' | relative_url }}" alt="Figure 15 — Device namespace after the trigger.">
 
-<img src="{{ '/assets/images/rip-manipulation/media/image7.png' | relative_url }}"
-style="width:6.40625in;height:0.23958in" alt="image7" />
+  <figcaption>Figure 15 — Device namespace after the trigger.</figcaption>
 
-<img src="{{ '/assets/images/rip-manipulation/media/image5.png' | relative_url }}"
-style="width:2.14583in;height:0.95833in" alt="image5" />
+</figure>
 
-We can see that param_3 is locally initialized and is
-not under the control of the user. We also see that local_b8 has its
-“magic numbers” hardcoded in there therefore, the actual if statement is
-not really a barrier, we can confirm this by putting a breakpoint at the
-if statement to see what it is actually doing at runtime.
+This was not successful. No new device interface appeared.
 
-Lets use “sxe ld:rusb3xhc” to set the breakpoint at
-when our driver loads, we can then use “lmDvm rusb3xhc” to find its base
-address and then set the breakpoint to the where we want it to go. For
-our case, it will be at “fffff802\`76c9830d”. The breakpoint hit, so
-let's see what's going on now.
+At this point, we needed to understand whether the failure was because of the device name, a missing prerequisite, or the wrong execution path entirely.
 
-From here we see that inside WinDBG, we successfully
-hit:  
-<img src="{{ '/assets/images/rip-manipulation/media/image17.png' | relative_url }}"
-style="width:6.5in;height:0.375in" alt="image17" />
+## Checking the Magic-Value Condition
 
-Which corresponds to
+Looking back at the code, we saw a conditional check that guarded the section where the IRP_CreateDevice function lived:
 
-<img src="{{ '/assets/images/rip-manipulation/media/image11.png' | relative_url }}"
-style="width:5.38542in;height:0.625in" alt="image11" />
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image2.png' | relative_url }}" alt="Figure 16 — Conditional check before setup.">
 
-Therefore we can be certain that our param_3 aka the
-local_b8 does pass this test. In fact after setting a breakpoint at the
-exact line where IRP_CreateDevice is being initialized aka “*(code **)(*(longlong *)(param_1 + 0x30) + 8) = IRP_CreateDevice;”, we
-still see the breakpoint being hit. Therefore we can confirm that the
-magic values are not the issues but instead it might be our approach to
-having the driver expose the devices. From the code we know that the
-function that exposes the devices aka IRP_CreateDevice is being hooked
-to the Dispatch Table pointer of IRP_MJ_CREATE which is automatically
-triggered by windows if we pass on a correct request with CreateFileW.
-We can see if we can trigger the function by setting a breakpoint at
-that offset.
+  <figcaption>Figure 16 — Conditional check before setup.</figcaption>
 
-<img src="{{ '/assets/images/rip-manipulation/media/image21.png' | relative_url }}"
-style="width:4.79167in;height:2.64583in" alt="image21" />
+</figure>
 
-We know the actual offset = RVA - VA → 0x32c50
+From the decompiler output, it looked like the function expected a magic value inside param_3. Specifically, it appeared to check whether param_3 started with the bytes 0x94 0x03 0x00.
 
-Therefore, let’s setup a breakpoint at:
+So the next question was: what is param_3, and is it actually under our control?
 
-<img src="{{ '/assets/images/rip-manipulation/media/image8.png' | relative_url }}"
-style="width:3.10417in;height:0.58333in" alt="image8" />
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image14.png' | relative_url }}" alt="image14">
 
-and run our python script using CreateFileW to
-possibly call IRP_MJ_CREATE:
+</figure>
 
-<img src="{{ '/assets/images/rip-manipulation/media/image10.png' | relative_url }}"
-style="width:6.11458in;height:1.57292in" alt="image10" />
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image11.png' | relative_url }}" alt="Figure 17 — Inspecting param_3.">
 
-However we see no breakpoint being hit. Therefore we
-can assume this function is not getting called through this approach.  
-  
-Lets see why that is:  
-<img src="{{ '/assets/images/rip-manipulation/media/image25.png' | relative_url }}"
-style="width:4.125in;height:1.51042in" alt="image25-2" />  
-We see there are only two instances of IoCreateSymbolicLink being
-present, one of them being inside of the IRP_DeviceCreate Function,
-therefore it does not expose the devices to user-mode. It's like a
-chicken and egg situation, where to get the symbolicLink, we will need
-to call the IRP_MJ_CREATE function which requires the device to be
-exposed to usermode using IoCreateSymbolicLink.
+  <figcaption>Figure 17 — Inspecting param_3.</figcaption>
 
-Therefore to cause the driver to expose the device we
-need something in the kernel using the CreateFileW API to get
-IRP_MJ_CREATE to expose. This is probably done through a helper driver.
-Considering we have RIP control. We could force execution of the code
-however we require the proper register values that we are unable to dump
-right now.
+</figure>
 
-**Conclusion:** RIP Manipulation can allow us to
-execute code that's usually hidden barriers like kernel callable only
-IRP_MJ_CREATE which could allow for user-mode access to the IOCTL codes
-however that requires careful manipulation of the registers so that they
-store the appropriate values. While this could allow for forcing drivers
-to expose devices. The success rate and even the methodology really
-depends upon the driver itself.
+We can see that param_3 is locally initialized and does not appear to be directly controlled from user mode. We also see that local_b8 contains the expected magic bytes hardcoded inside the function. Therefore, the conditional check itself may not actually be the barrier.
 
-**Future work:** Whilst the particular case of
-**RUSB3XHC.sys** didn’t allow us to get the value of the registers
-required for a successful call to the function “IRP_CreateDevice”.
-Potentially looking at other drivers would allow us to provide a simple
-PoC.
+To confirm this, we set a breakpoint on the conditional check and observed what happened at runtime.
 
-**Security Disclosure:** All the work was performed
-inside an isolated lab environment and on systems we control. Please
-ensure that you follow proper security etiquette whilst performing such
-research.
+We used sxe ld:rusb3xhc to break when the driver loaded. Then we used lmDvm rusb3xhc to find the loaded base address and set a breakpoint at the target location. In this case, the resolved address was fffff802`76c9830d.
 
-Thank you for the read :DDDDDDDDDD
+The breakpoint hit, so we inspected the runtime state.
+
+Inside WinDbg, we successfully hit the following location:
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image7.png' | relative_url }}" alt="Figure 18 — Breakpoint hit before the check.">
+
+  <figcaption>Figure 18 — Breakpoint hit before the check.</figcaption>
+
+</figure>
+
+Which corresponds to the following location in Ghidra:
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image20.png' | relative_url }}" alt="image20">
+
+</figure>
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image4.png' | relative_url }}" alt="Figure 19 — Matching Ghidra location.">
+
+  <figcaption>Figure 19 — Matching Ghidra location.</figcaption>
+
+</figure>
+
+Therefore, we can be certain that param_3, or more specifically the locally initialized local_b8, passes this check.
+
+In fact, after setting a breakpoint at the exact line where IRP_CreateDevice was being initialized:
+
+```c
+*(code **)(*(longlong *)(param_1 + 0x30) + 8) = IRP_CreateDevice;
+```
+
+We still saw the breakpoint being hit.
+
+So the magic values were not the issue. The more likely issue was our approach to getting the driver to expose the device interface.
+
+### Attempt 3: Breaking on IRP_CreateDevice
+
+From the code, it looked like the function responsible for device creation, IRP_CreateDevice, was being attached to a dispatch path that appeared related to IRP_MJ_CREATE. In a normal user-mode flow, this kind of path would usually be triggered when a correct request is made through CreateFileW.
+
+To test that, we set a breakpoint directly on the IRP_CreateDevice function and then ran our Python script to try to open the suspected device name.
+
+We calculated the relevant offset as 0x32c50.
+
+Then we set the breakpoint at the resolved runtime address:
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image5.png' | relative_url }}" alt="Figure 20 — Breakpoint on IRP_CreateDevice.">
+
+  <figcaption>Figure 20 — Breakpoint on IRP_CreateDevice.</figcaption>
+
+</figure>
+
+After that, we ran the Python script using CreateFileW to try to trigger the IRP_MJ_CREATE path:
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image23.png' | relative_url }}" alt="Figure 21 — User-mode trigger attempt.">
+
+  <figcaption>Figure 21 — User-mode trigger attempt.</figcaption>
+
+</figure>
+
+<figure>
+  <img src="{{ '/assets/images/rip-manipulation/media/image16.png' | relative_url }}" alt="Figure 21 — User-mode trigger attempt.">
+
+  <figcaption>Figure 21 — User-mode trigger attempt.</figcaption>
+
+</figure>
+
+Although some candidate names returned valid handles, the breakpoint on IRP_CreateDevice was not hit. This suggests that these opens were not reaching the target routine we were trying to trigger.
+
+### The Device Exposure Deadlock
+
+At this point, we looked again at the symbolic link creation path.
+
+There were only two instances of IoCreateSymbolicLink present. One of them was inside the IRP_CreateDevice function itself. This creates a chicken-and-egg problem: to reach the device from user mode, we need a symbolic link, but the symbolic link appears to be created inside a path that we cannot reach from user mode unless the device is already exposed.
+
+In other words, this does not look like a simple user-mode CreateFileW trigger path.
+
+The more likely explanation is that this routine is triggered by another kernel-mode component, possibly a helper driver or some kernel-mode equivalent create/open path. Since we do have RIP control, we could still attempt to redirect execution into this code manually. However, the first crash already showed the main problem: we would need the proper register values and expected runtime structures for the function to execute safely.
+
+At this stage, we were unable to recover the full calling context required for a successful call into IRP_CreateDevice. So, for this driver, direct RIP redirection was not enough to expose the device interface.
+
+### Takeaway from this Case Study
+
+The important takeaway from this attempt is that the barrier was not simply the presence of a magic value or the existence of the device-creation function.
+
+The target path existed. The magic-value check passed. The function pointer assignment happened. However, the path still was not reachable through our user-mode trigger attempt, and direct RIP redirection crashed without the correct runtime state.
+
+So for RUSB3XHC.sys, the real problem was reachability and state reconstruction. Getting the driver to expose the device interface required more than just landing RIP at the right address. The driver expected a specific calling context, and without that context, the approach failed.
+
+This does not invalidate the broader idea, but it does narrow it. Forced device exposure is not a generic “jump to IoCreateDevice” problem. It is a driver-specific problem involving control flow, initialized state, dispatch behavior, and the exact context expected by the target routine.
+
+## Lessons Learned
+
+The main lesson from this case study is that RIP redirection can get us to interesting code, but it does not automatically give us a valid execution context.
+
+In the case of RUSB3XHC.sys, the device-creation path did exist. We found the relevant IoCreateDevice / IoCreateSymbolicLink related logic, we identified the suspected IRP_CreateDevice routine, and we confirmed that some of the conditional checks were not the actual barrier. However, directly redirecting RIP into the suspected path still crashed the VM because the expected register values and runtime structures were not properly configured.
+
+This means the problem is not just “can we reach the code?” The more important problem is “can we reach the code with the state it expects?”
+
+That distinction matters. A driver may contain the right device-creation code, but that code may depend on a very specific calling path. It may expect initialized structures, specific object pointers, helper-driver interaction, hardware state, registry values, or some other driver-specific setup. Without that context, the function may not behave correctly even if we land RIP at the right address.
+
+So, for this driver, forced device exposure was not a simple “jump to IoCreateDevice” problem. It was a reachability and state-reconstruction problem.
+
+## Limitations
+
+This was a single-driver case study, not a generic proof that this method works across all drivers.
+
+The test case, RUSB3XHC.sys, did not allow us to successfully expose a new user-mode device interface through direct RIP redirection. We were able to identify interesting device-creation logic and understand more about why the path was not naturally reachable, but we were not able to recover the full register and structure state needed for a successful call into IRP_CreateDevice.
+
+The lab setup also used a controlled kernel-mode redirection primitive with HVCI disabled. This makes the experiment useful for research and methodology development, but it should not be treated as a claim that the same approach applies unchanged to fully hardened production environments.
+
+Another limitation is automation. Even if this approach works against some drivers, the methodology is likely to be highly driver-dependent. Each target may require different register values, object pointers, initialization state, and triggering conditions. That makes generic automation difficult unless the device-creation patterns can first be classified.
+
+## Future Work
+
+The next step is to test this methodology against more drivers from the signed, loadable, device-API overlap set.
+
+The RUSB3XHC.sys case showed that direct RIP redirection is not enough when the target function expects a specific calling context. However, other drivers may have simpler device-creation paths with fewer prerequisites. Those would be better candidates for a working proof of concept.
+
+Future work will focus on:
+
+- Testing more drivers that contain both IoCreateDevice and IoCreateSymbolicLink.
+
+- Classifying the different patterns used for device creation.
+
+- Identifying drivers where the device-creation function requires minimal external state.
+
+- Automating the mapping between Ghidra-discovered callsites and WinDbg runtime breakpoints.
+
+- Recovering the expected register and structure state for candidate device-creation routines.
+
+- Comparing drivers that expose devices naturally against drivers that contain the APIs but fail to expose anything during normal loading.
+
+The main goal is to understand which drivers are actually good candidates for forced device-exposure testing, and which ones are too dependent on driver-specific runtime state to be useful.
+
+## Security Disclosure
+
+All work was performed inside an isolated lab environment on systems under our control.
+
+The goal of this research is to improve Windows driver research methodology and better understand why some drivers expose reachable device interfaces while others do not. This post does not target any third-party system, and the techniques discussed here should only be used in controlled environments where you have explicit permission to perform this kind of testing.
+
+Please follow proper security etiquette while performing similar research.
+
+## Conclusion
+
+This research started with a simple problem: our driver-hunting pipeline had an extremely low yield. Even though many drivers contained references to IoCreateDevice and IoCreateSymbolicLink, very few actually exposed reachable user-mode device interfaces during normal testing.
+
+To explore whether that yield could be improved, we tested whether controlled kernel-mode RIP redirection could be used to reach hidden or normally unreachable device-creation paths.
+
+For RUSB3XHC.sys, the result was negative, but still useful. The target path existed, and parts of it were reachable during initialization, but directly redirecting execution into the suspected device-creation routine was not enough. The function expected a specific runtime context that we were not able to fully reconstruct.
+
+The final takeaway is that forced device exposure is not a generic “jump to the right function” technique. It is a driver-specific reachability problem. RIP control may help us reach interesting code, but successful execution still depends on the correct register state, initialized structures, dispatch flow, and prerequisite conditions expected by the driver.
+
+That makes the approach more limited, but also more interesting. If we can identify drivers with simpler creation paths and fewer state requirements, this technique may still help expand the reachable IOCTL surface available for future driver vulnerability research.
