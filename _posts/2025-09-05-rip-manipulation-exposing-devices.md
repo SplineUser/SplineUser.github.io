@@ -110,9 +110,7 @@ The first attempt was supposed to be simple. We found the function in Ghidra tha
 We then looked at the offset inside of Ghidra:
 
 <figure>
-  <img src="{{ '/assets/images/rip-manipulation/media/image22.png' | relative_url }}" alt="Figure 2 — IoCreateDevice reference in Ghidra.">
-
-  <figcaption>Figure 2 — IoCreateDevice reference in Ghidra.</figcaption>
+  <img src="{{ '/assets/images/rip-manipulation/media/image22.png' | relative_url }}" alt="IoCreateDevice reference offset in Ghidra.">
 
 </figure>
 
@@ -201,9 +199,7 @@ At this point, we wanted to understand what param_1 + 0x30 was actually pointing
 R12 was holding the param_1 value, so we dumped the registers to see what param_1 actually was:
 
 <figure>
-  <img src="{{ '/assets/images/rip-manipulation/media/image22.png' | relative_url }}" alt="Figure 8 — Register dump for param_1.">
-
-  <figcaption>Figure 8 — Register dump for param_1.</figcaption>
+  <img src="{{ '/assets/images/rip-manipulation/media/image13.png' | relative_url }}" alt="Register dump context for param_1.">
 
 </figure>
 
@@ -374,9 +370,7 @@ Then we set the breakpoint at the resolved runtime address:
 After that, we ran the Python script using CreateFileW to try to trigger the IRP_MJ_CREATE path:
 
 <figure>
-  <img src="{{ '/assets/images/rip-manipulation/media/image23.png' | relative_url }}" alt="Figure 21 — User-mode trigger attempt.">
-
-  <figcaption>Figure 21 — User-mode trigger attempt.</figcaption>
+  <img src="{{ '/assets/images/rip-manipulation/media/image23.png' | relative_url }}" alt="User-mode trigger attempt output.">
 
 </figure>
 
