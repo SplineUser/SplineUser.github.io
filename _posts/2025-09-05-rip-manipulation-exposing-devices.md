@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Expanding the Hunting Horizons using RIP Manipulation"
-date: 2025-09-05
+date: 2026-04-25
 categories: [Research, Windows Internals]
 tags: [kernel, drivers, RIP, WinDBG, Ghidra, windows]
 description: "Using RIP register manipulation via an MSR R/W vulnerability to force hidden drivers to expose their devices — methodology, observations, and findings."
@@ -30,7 +30,7 @@ From there, we looked for drivers that referenced the usual device-creation APIs
 The results looked like this:
 
 <figure>
-  <img src="{{ '/assets/images/rip-manipulation/media/image18.png' | relative_url }}" alt="image18">
+  <img src="{{ '/assets/images/rip-manipulation/media/Table.png' | relative_url }}" alt="Table">
 
 </figure>
 
